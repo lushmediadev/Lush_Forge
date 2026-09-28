@@ -122,3 +122,4 @@
 - Staged office-host migration on `ubuntu-web`: Hub and Lush Video run as persistent services, public domains route through the VPS gateway over a dedicated SSH tunnel, and worker connectivity remains reachable through the existing tunnel contracts.
 - Renamed the Forge browser tab to `Forge - Trình tạo ảnh` and reused the Lush Media favicon used by the ComfyUI video app.
 - Keep the Forge browser title stable after Gradio boot, which otherwise restores `Stable Diffusion` asynchronously.
+- Began full VPS retirement: Forge 1/2 reverse tunnels now terminate directly on `ubuntu-web`, the old VPS Hub service is stopped, and restricted keys are staged for the two Windows ComfyUI tunnels.
