@@ -231,7 +231,10 @@ def _register_lora_upload_api(_: object, app) -> None:
         account_scoped_alias._lush_account_scoped = True
         lora_network.NetworkOnDisk.__init__ = account_scoped_init
         lora_network.NetworkOnDisk.get_alias = account_scoped_alias
-        networks.list_available_networks()
+        try:
+            networks.list_available_networks()
+        except Exception as exc:
+            print(f"[Lush Forge History] Account LoRA index initialization failed: {type(exc).__name__}: {exc}")
 
     def require_worker_key(worker_key: str | None) -> None:
         expected = CONFIG.get("key", "") if CONFIG else ""
@@ -250,6 +253,8 @@ def _register_lora_upload_api(_: object, app) -> None:
             raise HTTPException(status_code=400, detail="Chỉ nhận file .safetensors, .ckpt hoặc .pt")
         target = (lora_root / f"{private_prefix(account_id)}{filename}").resolve()
         target.relative_to(lora_root)
+        if (lora_root / filename).exists():
+            raise HTTPException(status_code=409, detail="LoRA này đã có bản dùng chung trên máy Forge")
         return target
 
     def prune_finished_uploads() -> None:
