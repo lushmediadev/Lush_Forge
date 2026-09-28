@@ -12,7 +12,7 @@
 - `docs/modules/gateway.md` khi sửa auth, proxy hoặc quản trị tài khoản.
 - `docs/modules/worker-bridge.md` khi sửa extension callback, tunnels hoặc Forge runtime.
 - `docs/UI_SYSTEM.md` khi thay đổi giao diện.
-- `docs/tasks/active/forge-hub-mvp.md` khi nối DNS/Caddy và xác nhận browser production.
+- `docs/tasks/active/<task-id>.md` khi có rollout hoặc thay đổi đang triển khai.
 - `docs/CHANGELOG.md` chỉ khi cần đối chiếu lịch sử cụ thể.
 
 ## External reference

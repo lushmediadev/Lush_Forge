@@ -28,7 +28,7 @@
 
 ## Runtime
 
-- App chạy dưới user `forgehub` trên VPS, kết nối đến `127.0.0.1:18386/18387` do hai reverse tunnels cung cấp.
+- Git checkout `/opt/lush-forge-hub/repo` chạy dưới user `forgehub`; systemd dùng virtualenv hiện hữu `/opt/lush-forge-hub/app/.venv` và kết nối `127.0.0.1:18386/18387` qua reverse tunnels.
 - Caddy nhận HTTPS `ai.lushmedia.net` và proxy đến app qua host Docker gateway `172.17.0.1:8036`.
 - Caddy does not add a second Basic Auth prompt for the internal trial; Hub's HttpOnly account cookie is persistent and refreshed on active use.
 - Các tài khoản dùng chung giữ cùng worker và cùng history.

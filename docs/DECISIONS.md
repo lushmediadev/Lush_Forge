@@ -39,3 +39,7 @@ Root-level LoRAs on each worker are shared by all accounts assigned to that work
 ## HUB-010: Account-bound LoRA upload lifecycle
 
 The Hub chooses the worker from the authenticated account and supplies a private worker key plus account ID. Uploads use atomic temporary files and an unpredictable upload ID. A cancel is confirmed by that worker and removes partial or just-committed data; the UI retries a missed cancel when the connection returns.
+
+## HUB-011: Git-managed VPS source
+
+The VPS service runs code from `/opt/lush-forge-hub/repo`, tracking the public `main` branch. The existing virtualenv, environment file, and SQLite data remain outside the checkout. `deploy/vps/rollout.sh` records the previous commit, fast-forwards from origin, restarts the service, checks health, and restores the previous commit if health fails.

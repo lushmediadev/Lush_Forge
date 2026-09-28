@@ -12,5 +12,6 @@
 | HUB-008 | Không replay terminal SSE cũ sau reconnect để tránh Gallery nhận lại output cũ. | Active | Queue relay |
 | HUB-009 | Root-level LoRAs trên mỗi worker dùng chung; LoRA người dùng upload được gắn account ID và tag duy nhất. | Active | LoRA access |
 | HUB-010 | Upload/cancel được Hub gắn với account/worker, worker xác nhận hủy; Hub kiểm tra quyền LoRA trước generation. | Active | LoRA lifecycle |
+| HUB-011 | VPS chạy từ Git checkout `/opt/lush-forge-hub/repo`; DB/env/venv nằm ngoài checkout và rollout lưu commit để rollback. | Active | Deployment |
 
 Thông tin vận hành còn thiếu được ghi ở `docs/PROJECT_BRIEF.md`.

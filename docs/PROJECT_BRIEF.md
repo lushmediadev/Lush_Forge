@@ -27,11 +27,11 @@
 - Root-level LoRAs on a worker are shared by every account assigned to that worker. The curated FLUX 8-step LoRA is installed at the same root path on both machines.
 - User uploads are stored as `__lush_owner_<account_id>__<filename>` in the worker's LoRA directory. Hub serves only shared and matching account entries, and validates LoRA tags before queued or API generation.
 - In-flight LoRA uploads use a random ID for percent progress and worker-confirmed cancellation; the worker removes partial or just-saved data when canceled.
-- The production Hub source is moving into the Git repository `lushmediadev/Lush_Forge`; production database, environment file, and virtualenv remain outside the repository checkout.
+- The public Git repository is `lushmediadev/Lush_Forge`; VPS systemd runs from `/opt/lush-forge-hub/repo`. Production database and environment stay under `/var/lib/lush-forge-hub` and `/etc/lush-forge-hub.env`; the existing virtualenv remains at `/opt/lush-forge-hub/app/.venv`.
 
 ## Intended system shape
 
-- VPS app đã chạy dưới `/opt/lush-forge-hub/app` tại `172.17.0.1:8036`.
+- VPS Git checkout `/opt/lush-forge-hub/repo` chạy dưới user `forgehub` tại `172.17.0.1:8036`.
 - Admin tạo/khóa tài khoản, đặt lại mật khẩu và gán cố định một worker. Thay assignment sẽ thu hồi sessions.
 - Ubuntu GPU 1/2 giữ nguyên Forge local-only; reverse SSH tunnels riêng và history extension đã được cài.
 - Hub thêm history drawer vào giao diện Forge; danh sách, thumbnail và output được giới hạn theo tài khoản.

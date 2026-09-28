@@ -98,3 +98,4 @@
 - Rebuilt login and admin layouts using the original Lush Video logo and photographic background; added password visibility, account search, clearer machine status, responsive layouts, and restrained motion.
 - Copied the shared FLUX 8-step LoRA to both Forge workers and verified the matching SHA-256.
 - Added account-manifest filtering, account-unique private upload names, and Hub prompt checks for LoRA access.
+- Pushed sanitized source to `lushmediadev/Lush_Forge`; moved the VPS systemd working directory to `/opt/lush-forge-hub/repo` and added commit-based rollout with health-check rollback.
