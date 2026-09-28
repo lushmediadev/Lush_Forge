@@ -33,6 +33,7 @@
 - On Hub startup, recent completed jobs missing a thumbnail/output path are reconciled against worker result metadata and fallback files, without re-running generation.
 - The public Git repository is `lushmediadev/Lush_Forge`; VPS systemd runs from `/opt/lush-forge-hub/repo`. Production database and environment stay under `/var/lib/lush-forge-hub` and `/etc/lush-forge-hub.env`; the existing virtualenv remains at `/opt/lush-forge-hub/app/.venv`.
 - With a valid persistent account cookie, `/` proxies directly to the assigned Forge; `/hub/login` redirects existing sessions rather than showing an extra landing screen. Chrome DevTools profiling is still required to identify client-side Gradio bootstrap delay; Caddy compression is enabled.
+- Chrome DevTools trace on 2026-09-28 measured LCP 4.27 s: TTFB 363 ms and render delay 3.91 s. The longest critical chain (5.97 s) was the synchronous Infinite Image Browsing extension script and its settings/path probes; Hub defers that secondary script so core Txt2img hydration can paint first.
 
 ## Intended system shape
 

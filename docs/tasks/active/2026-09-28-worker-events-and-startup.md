@@ -22,6 +22,7 @@
 - Live read-only checks: both Forge services and both tunnel units are active; worker callback tunnels return Hub health in 94–122 ms; local Forge root/config TTFB is about 51/4 ms. The logged-in root route already proxies directly to Forge, and Caddy compression is configured.
 - `joblib==1.5.3` is now pinned in `deploy/ubuntu/forge-extra-requirements.txt` and installed in both Forge virtualenvs; Forge 1 restarted and its fresh log no longer reports the `soft_inpainting.py` import error.
 - Chrome DevTools MCP was added to the user's Codex config, but the current Codex process has not loaded it yet. FCP/LCP tracing requires restarting Codex and resuming this task.
+- After restart, Chrome DevTools trace measured LCP 4.27 s (TTFB 363 ms, render delay 3.91 s), with the synchronous Infinite Image Browsing script/settings probe as the longest 5.97 s chain. A Hub HTML transform now adds `defer` only to that script.
 
 ## Guardrails
 

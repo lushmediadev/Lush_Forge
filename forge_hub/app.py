@@ -51,6 +51,7 @@ FORGE_HEAD_INJECTION = (
     '<script defer src="/hub/assets/queue-controls.js"></script>'
     '<script defer src="/hub/assets/lora-upload.js?v=3" data-lush-lora-upload></script>'
 ).encode("utf-8")
+NON_BLOCKING_FORGE_SCRIPT = b' src="file=extensions/sd-webui-infinite-image-browsing/javascript/index.js?'
 MAX_LORA_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
 LORA_SUFFIXES = {".safetensors", ".ckpt", ".pt"}
 LORA_TAG_RE = re.compile(r"<lora:([^:>]+):[^>]*>", re.IGNORECASE)
@@ -1135,6 +1136,17 @@ async def _proxy_http(path: str, request: Request):
                     yield chunk
                     continue
                 data = tail + chunk
+                lowered = data.lower()
+                # Infinite Image Browsing is a secondary tab. Its legacy
+                # classic script currently blocks Gradio hydration while it
+                # probes its own settings/path endpoints. Defer only this
+                # known extension script so Txt2img can paint first; the
+                # script still runs before DOMContentLoaded and keeps its tab.
+                data = data.replace(
+                    NON_BLOCKING_FORGE_SCRIPT,
+                    b' defer' + NON_BLOCKING_FORGE_SCRIPT,
+                    1,
+                )
                 lowered = data.lower()
                 index = lowered.find(marker)
                 if index >= 0:
