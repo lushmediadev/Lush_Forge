@@ -20,6 +20,18 @@ if [[ -n "${local_changes}" ]]; then
   exit 2
 fi
 
+wait_for_health() {
+  local attempt
+  for attempt in $(seq 1 30); do
+    if systemctl is-active --quiet "${service}" \
+      && curl -fsS --max-time 3 "${health_url}" >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
 previous_commit="$(runuser -u forgehub -- git -C "${repo_dir}" rev-parse HEAD)"
 backup_dir="/root/backups/lush-forge-hub/rollout-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "${backup_dir}"
@@ -30,11 +42,14 @@ target_commit="$(runuser -u forgehub -- git -C "${repo_dir}" rev-parse "origin/$
 runuser -u forgehub -- git -C "${repo_dir}" checkout --detach "${target_commit}"
 systemctl restart "${service}"
 
-if ! systemctl is-active --quiet "${service}" || ! curl -fsS --max-time 8 "${health_url}" >/dev/null; then
+if ! wait_for_health; then
   echo "Health check failed; rolling back to ${previous_commit}." >&2
   runuser -u forgehub -- git -C "${repo_dir}" checkout --detach "${previous_commit}"
   systemctl restart "${service}"
-  curl -fsS --max-time 8 "${health_url}" >/dev/null
+  if ! wait_for_health; then
+    echo "Rollback health check also failed; inspect ${service} logs immediately." >&2
+    exit 1
+  fi
   exit 1
 fi
 
