@@ -30,6 +30,7 @@
 - History date bounds are converted to UTC and queried within the authenticated account only.
 - `GET /hub/api/lora/manifest` returns shared LoRAs and only the signed-in account's private LoRAs from its assigned worker.
 - Upload/cancel endpoints bind requests to the session account and selected worker; the browser never supplies a worker ID. Hub filters `/sdapi/v1/loras` and rejects unavailable `<lora:...>` tags before queued and direct txt2img/img2img generation.
+- Browser LoRA uploads are coalesced into 4 MiB chunks while forwarding through the Hub, reducing small-chunk overhead over the reverse SSH tunnel. The tunnel bandwidth remains the limiting factor for large files.
 
 ## Runtime
 

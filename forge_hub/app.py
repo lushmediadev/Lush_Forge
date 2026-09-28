@@ -54,6 +54,7 @@ FORGE_HEAD_INJECTION = (
 ).encode("utf-8")
 NON_BLOCKING_FORGE_SCRIPT = b' src="file=extensions/sd-webui-infinite-image-browsing/javascript/index.js?'
 MAX_LORA_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
+LORA_FORWARD_CHUNK_BYTES = 4 * 1024 * 1024
 LORA_SUFFIXES = {".safetensors", ".ckpt", ".pt"}
 LORA_TAG_RE = re.compile(r"<lora:([^:>]+):[^>]*>", re.IGNORECASE)
 
@@ -605,8 +606,21 @@ async def stream_lora_upload(upload_id: str, request: Request):
     }
     if content_length:
         headers["Content-Length"] = content_length
+
+    async def coalesced_body():
+        buffer = bytearray()
+        async for chunk in request.stream():
+            if not chunk:
+                continue
+            buffer.extend(chunk)
+            if len(buffer) >= LORA_FORWARD_CHUNK_BYTES:
+                yield bytes(buffer)
+                buffer.clear()
+        if buffer:
+            yield bytes(buffer)
+
     try:
-        response = await request.app.state.http.post(url, content=request.stream(), headers=headers)
+        response = await request.app.state.http.post(url, content=coalesced_body(), headers=headers)
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"Không liên lạc được với {worker_id}") from exc
     try:
