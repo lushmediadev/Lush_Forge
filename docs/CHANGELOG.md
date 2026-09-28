@@ -109,3 +109,4 @@
 - Make VPS rollout poll the health endpoint after restart before rollback; long-lived SSE connections can make systemd stop take up to its graceful-shutdown timeout.
 - Keep worker outbox/result metadata private (`0700` directory, `0600` SQLite file); verify both callback tunnels deliver and drain an unknown-job sentinel without the previous `Request` exception.
 - Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.
+- Deployed worker callback fixes and Hub recovery/timeout changes; both workers and public Hub health checks pass. Six historical completed rows had no exact recoverable worker result and were left unchanged.
