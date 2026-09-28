@@ -45,6 +45,8 @@ QUEUE_RECOVERY_GRACE_SECONDS = 90
 CANCEL_RECOVERY_GRACE_SECONDS = 20
 WORKER_CONTROL_TIMEOUT = httpx.Timeout(connect=5, read=8, write=15, pool=5)
 FORGE_HEAD_INJECTION = (
+    '<title>Forge - Trình tạo ảnh</title>'
+    '<link rel="icon" type="image/svg+xml" href="/hub/assets/lush-logo-red.svg?v=4" data-lush-forge-favicon>'
     '<link rel="stylesheet" href="/hub/assets/queue-controls.css">'
     '<link rel="stylesheet" href="/hub/assets/history.css?v=2">'
     '<link rel="stylesheet" href="/hub/assets/lora-upload.css?v=3" data-lush-lora-upload>'
