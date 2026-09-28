@@ -74,6 +74,7 @@ def _post(event: dict) -> None:
 
 def _outbox_connect() -> sqlite3.Connection:
     EVENTS_DB.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    EVENTS_DB.parent.chmod(0o700)
     connection = sqlite3.connect(EVENTS_DB, timeout=5)
     connection.execute("PRAGMA busy_timeout=5000")
     connection.execute(
@@ -84,6 +85,7 @@ def _outbox_connect() -> sqlite3.Connection:
         "CREATE TABLE IF NOT EXISTS completed_results ("
         "task_id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at REAL NOT NULL)"
     )
+    EVENTS_DB.chmod(0o600)
     return connection
 
 

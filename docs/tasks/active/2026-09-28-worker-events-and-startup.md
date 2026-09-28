@@ -13,7 +13,9 @@
 - `extension/lush-forge-history/scripts/lush_forge_history.py` imports `Request` from `urllib.request` then shadows it with `fastapi.Request`; `_post()` passes urllib-only `data=` to the shadowing class.
 - The public Hub health/login routes respond quickly, but the authenticated Forge page has not been profiled in Chrome DevTools because that MCP is unavailable.
 - Local source changes now alias the two `Request` classes, persist callback events in a bounded/retrying SQLite outbox, expose a worker-key-protected result-recovery endpoint, bound Hub worker-control requests, reconcile stuck cancels, and prevent recovery from blindly resubmitting a completed/running task.
-- No production source has been copied to the workers or VPS yet; no service restarts or queue mutations have occurred.
+- The fixed worker extension is deployed to both Ubuntu workers, with timestamped backups; both Forge services were restarted sequentially only after confirming native queue size/pending tasks/GPU utilization were zero.
+- Post-restart checks: both services and tunnels are active, result endpoint rejects an invalid worker key with HTTP 403, and an unknown-job callback sentinel reaches Hub and is rejected with HTTP 404 then drained from the outbox (no `patched_init` error). Both queues remain empty and GPUs idle.
+- Hub source changes are pushed but not yet deployed; SSH root key access to the Hub VPS is pending the user's one-time setup. No Hub service restart or production DB mutation has occurred.
 - Live read-only checks: both Forge services and both tunnel units are active; worker callback tunnels return Hub health in 94–122 ms; local Forge root/config TTFB is about 51/4 ms. The logged-in root route already proxies directly to Forge, and Caddy compression is configured.
 - Chrome DevTools MCP is not configured, so FCP/LCP and browser request-chain profiling remain blocked until the user adds `chrome-devtools` to MCP config.
 
