@@ -109,6 +109,7 @@
 - Pin the missing `joblib` dependency used by Forge's built-in soft-inpainting script for consistent worker startup.
 - Defer the secondary Infinite Image Browsing script at the Hub edge after a Chrome trace showed 3.91 s of render delay and a 5.97 s critical chain before Gradio painted.
 - Add a visible `⎋ Đăng xuất` action with icon and accessible label to the Hàng đợi & lịch sử footer.
+- Refine the logout action to sit at the footer edge as a text-only hover action, matching the neutral history drawer instead of a boxed button.
 - Make VPS rollout poll the health endpoint after restart before rollback; long-lived SSE connections can make systemd stop take up to its graceful-shutdown timeout.
 - Keep worker outbox/result metadata private (`0700` directory, `0600` SQLite file); verify both callback tunnels deliver and drain an unknown-job sentinel without the previous `Request` exception.
 - Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.

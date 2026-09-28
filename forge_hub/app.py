@@ -45,9 +45,9 @@ CANCEL_RECOVERY_GRACE_SECONDS = 20
 WORKER_CONTROL_TIMEOUT = httpx.Timeout(connect=5, read=8, write=15, pool=5)
 FORGE_HEAD_INJECTION = (
     '<link rel="stylesheet" href="/hub/assets/queue-controls.css">'
-    '<link rel="stylesheet" href="/hub/assets/history.css">'
+    '<link rel="stylesheet" href="/hub/assets/history.css?v=2">'
     '<link rel="stylesheet" href="/hub/assets/lora-upload.css?v=3" data-lush-lora-upload>'
-    '<script defer src="/hub/assets/history.js"></script>'
+    '<script defer src="/hub/assets/history.js?v=2"></script>'
     '<script defer src="/hub/assets/queue-controls.js"></script>'
     '<script defer src="/hub/assets/lora-upload.js?v=3" data-lush-lora-upload></script>'
 ).encode("utf-8")

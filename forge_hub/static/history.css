@@ -46,11 +46,11 @@
 .lush-history-item-actions { display: flex; gap: 11px; margin-top: 7px; }
 .lush-history-item-actions a, .lush-history-item-actions button { padding: 0; color: #24744a; font-size: 11px; text-decoration: none; }
 .lush-history-item-actions a:hover, .lush-history-item-actions button:hover { text-decoration: underline; }
-.lush-history-footer { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 16px; border-top: 1px solid #e3e7e3; color: #657068; font-size: 11px; }
+.lush-history-footer { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-top: 1px solid #e3e7e3; color: #657068; font-size: 11px; }
 .lush-history-footer-account { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lush-history-logout { display: inline-flex; flex: none; align-items: center; gap: 5px; min-height: 30px; padding: 0 9px; border: 1px solid #cfd8d1; border-radius: 6px; background: #fff; color: #24744a; font-size: 12px; font-weight: 650; cursor: pointer; }
-.lush-history-logout:hover { border-color: #4fbf89; background: #f3faf5; }
+.lush-history-logout { display: inline-flex; flex: none; align-items: center; gap: 4px; margin-left: auto; min-height: 26px; padding: 2px 0; border: 0; border-radius: 0; background: transparent; color: #657068; font-size: 12px; font-weight: 650; cursor: pointer; }
+.lush-history-logout:hover { background: transparent; color: #24744a; text-decoration: underline; text-underline-offset: 2px; }
 .lush-history-logout:focus-visible { outline: 2px solid #4fbf89; outline-offset: 2px; }
 .lush-history-logout:disabled { opacity: .6; cursor: wait; }
-.lush-history-logout-icon { font-size: 16px; line-height: 1; }
+.lush-history-logout-icon { color: currentColor; font-size: 16px; line-height: 1; }
 @media (max-width: 500px) { .lush-history-launcher { right: 12px; bottom: 12px; } }
