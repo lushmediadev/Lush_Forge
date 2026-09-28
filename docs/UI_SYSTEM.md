@@ -8,7 +8,7 @@
 - Forge remains the native Gradio UI. `history.js` adds a text `Hàng đợi` launcher and white drawer that matches the Forge light canvas.
 - The history launcher badge counts account jobs in `queued`, `running`, or the brief `cancelling` transition; terminal jobs do not affect the count.
 - The drawer provides prompt/status filters plus local date bounds; queued rows expose a per-job red × cancel action.
-- The drawer footer shows the account/worker context with a right-aligned text-only `⎋ Đăng xuất` action; it has no button box and only gains the accent/underline treatment on hover.
+- The drawer footer shows the account/worker context with a right-aligned text-only Lucide-style `LogOut` icon and `Đăng xuất` action; it has no button box and only gains the accent/underline treatment on hover.
 - Active rows show Forge progress and a per-job live preview while the drawer is open; Forge's `id_live_preview` is sent as the last-seen cursor in a single poll.
 - Leave the main Forge Gallery and latent-preview behavior native and untouched. Do not add a Hub overlay or replace the in-progress image area.
 - The native Generate button has a small green count for account jobs that are running or queued; terminal history is excluded.
