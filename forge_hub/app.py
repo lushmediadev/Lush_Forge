@@ -40,6 +40,7 @@ HOP_HEADERS = {
 }
 OUTPUT_ROOT = "/home/ubuntu/forge/outputs/"
 MAX_GENERATION_REQUEST_BYTES = 20_000_000
+MAX_OUTPUT_IMAGE_BYTES = 64 * 1024 * 1024
 QUEUE_RECOVERY_GRACE_SECONDS = 90
 CANCEL_RECOVERY_GRACE_SECONDS = 20
 WORKER_CONTROL_TIMEOUT = httpx.Timeout(connect=5, read=8, write=15, pool=5)
@@ -470,14 +471,29 @@ async def job_image(task_id: str, request: Request):
     if upstream.status_code != 200:
         await upstream.aclose()
         raise HTTPException(status_code=404, detail="Ảnh không còn trên Forge")
+    content_length = upstream.headers.get("content-length")
+    try:
+        if content_length is not None and int(content_length) > MAX_OUTPUT_IMAGE_BYTES:
+            await upstream.aclose()
+            raise HTTPException(status_code=413, detail="Ảnh kết quả vượt quá giới hạn tải")
+    except ValueError:
+        content_length = None
+    try:
+        image_bytes = await upstream.aread()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Luồng ảnh từ Forge bị gián đoạn") from exc
+    finally:
+        await upstream.aclose()
+    if len(image_bytes) > MAX_OUTPUT_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Ảnh kết quả vượt quá giới hạn tải")
     image_headers = {"Cache-Control": "private, max-age=86400, immutable"}
     for header_name in ("content-length", "etag", "last-modified"):
         header_value = upstream.headers.get(header_name)
         if header_value:
             image_headers[header_name] = header_value
-    return StreamingResponse(
-        upstream.aiter_raw(), media_type=upstream.headers.get("content-type", "image/png"),
-        headers=image_headers, background=BackgroundTask(upstream.aclose),
+    return Response(
+        image_bytes, media_type=upstream.headers.get("content-type", "image/png"),
+        headers=image_headers,
     )
 
 
