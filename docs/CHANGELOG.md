@@ -113,6 +113,7 @@
 - Replace the logout glyph with an inline Lucide-style `LogOut` SVG so the icon is crisp without adding a new runtime dependency.
 - Add `Tải ảnh` between `Xem ảnh` and `Xóa khỏi lịch sử`, and cache immutable task images for one day to avoid slow repeat opens through the worker tunnel.
 - Buffer bounded task image responses at Hub after reproducing a reverse-tunnel stream stall around 160 KB; this keeps browser view/download responses complete and cacheable.
+- Fix compressed image responses hanging because the worker's uncompressed `Content-Length` was forwarded through Caddy.
 - Make VPS rollout poll the health endpoint after restart before rollback; long-lived SSE connections can make systemd stop take up to its graceful-shutdown timeout.
 - Keep worker outbox/result metadata private (`0700` directory, `0600` SQLite file); verify both callback tunnels deliver and drain an unknown-job sentinel without the previous `Request` exception.
 - Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.

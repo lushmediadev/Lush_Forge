@@ -487,7 +487,9 @@ async def job_image(task_id: str, request: Request):
     if len(image_bytes) > MAX_OUTPUT_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="Ảnh kết quả vượt quá giới hạn tải")
     image_headers = {"Cache-Control": "private, max-age=86400, immutable"}
-    for header_name in ("content-length", "etag", "last-modified"):
+    # Do not forward the worker's Content-Length: Caddy may compress the
+    # response and must be free to recalculate the encoded body length.
+    for header_name in ("etag", "last-modified"):
         header_value = upstream.headers.get(header_name)
         if header_value:
             image_headers[header_name] = header_value
