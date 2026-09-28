@@ -14,24 +14,25 @@ if [[ ! -d "${repo_dir}/.git" ]]; then
   echo "Git checkout not found: ${repo_dir}" >&2
   exit 2
 fi
-if ! git -C "${repo_dir}" diff --quiet || ! git -C "${repo_dir}" diff --cached --quiet; then
+local_changes="$(runuser -u forgehub -- git -C "${repo_dir}" status --porcelain)"
+if [[ -n "${local_changes}" ]]; then
   echo "Refusing rollout: ${repo_dir} has local changes." >&2
   exit 2
 fi
 
-previous_commit="$(git -C "${repo_dir}" rev-parse HEAD)"
+previous_commit="$(runuser -u forgehub -- git -C "${repo_dir}" rev-parse HEAD)"
 backup_dir="/root/backups/lush-forge-hub/rollout-$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "${backup_dir}"
 printf '%s\n' "${previous_commit}" > "${backup_dir}/previous-commit.txt"
 
-git -C "${repo_dir}" fetch --prune origin "${branch}"
-target_commit="$(git -C "${repo_dir}" rev-parse "origin/${branch}")"
-git -C "${repo_dir}" checkout --detach "${target_commit}"
+runuser -u forgehub -- git -C "${repo_dir}" fetch --prune origin "${branch}"
+target_commit="$(runuser -u forgehub -- git -C "${repo_dir}" rev-parse "origin/${branch}")"
+runuser -u forgehub -- git -C "${repo_dir}" checkout --detach "${target_commit}"
 systemctl restart "${service}"
 
 if ! systemctl is-active --quiet "${service}" || ! curl -fsS --max-time 8 "${health_url}" >/dev/null; then
   echo "Health check failed; rolling back to ${previous_commit}." >&2
-  git -C "${repo_dir}" checkout --detach "${previous_commit}"
+  runuser -u forgehub -- git -C "${repo_dir}" checkout --detach "${previous_commit}"
   systemctl restart "${service}"
   curl -fsS --max-time 8 "${health_url}" >/dev/null
   exit 1
