@@ -29,6 +29,7 @@
 - In-flight LoRA uploads use a random ID for percent progress and worker-confirmed cancellation; the worker removes partial or just-saved data when canceled.
 - Worker lifecycle callbacks are persisted in a per-worker SQLite outbox and retried across temporary Hub/tunnel failures. The Hub reconciles per-task completion and saved fallback output before replaying a queued request, so a known completed/running task is not blindly generated twice.
 - Worker control-plane calls use bounded timeouts; long-lived Forge SSE streams keep their separate streaming timeout. Stale `cancelling` rows are reconciled after a grace period.
+- On Hub startup, recent completed jobs missing a thumbnail/output path are reconciled against worker result metadata and fallback files, without re-running generation.
 - The public Git repository is `lushmediadev/Lush_Forge`; VPS systemd runs from `/opt/lush-forge-hub/repo`. Production database and environment stay under `/var/lib/lush-forge-hub` and `/etc/lush-forge-hub.env`; the existing virtualenv remains at `/opt/lush-forge-hub/app/.venv`.
 - With a valid persistent account cookie, `/` proxies directly to the assigned Forge; `/hub/login` redirects existing sessions rather than showing an extra landing screen. Chrome DevTools profiling is still required to identify client-side Gradio bootstrap delay; Caddy compression is enabled.
 

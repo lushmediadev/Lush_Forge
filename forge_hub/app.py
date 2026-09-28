@@ -269,6 +269,15 @@ async def _recover_queued_jobs(app: FastAPI) -> None:
         await asyncio.sleep(15)
 
 
+async def _recover_completed_history(app: FastAPI) -> None:
+    jobs = await asyncio.to_thread(STORE.list_completed_jobs_missing_output)
+    for job in jobs:
+        try:
+            await _reconcile_completed_job(app, job)
+        except Exception as exc:
+            print(f"[Lush Forge Hub] Completed result backfill deferred for {job['worker_id']}: {type(exc).__name__}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await asyncio.to_thread(STORE.initialize)
@@ -280,12 +289,18 @@ async def lifespan(app: FastAPI):
     app.state.generate_inputs = {}
     app.state.queue_relay = QueueRelay(app.state.http, SETTINGS.worker_urls)
     app.state.queue_recovery_task = asyncio.create_task(_recover_queued_jobs(app), name="forge-queue-recovery")
+    app.state.completed_history_task = asyncio.create_task(
+        _recover_completed_history(app), name="forge-completed-history-recovery",
+    )
     try:
         yield
     finally:
         app.state.queue_recovery_task.cancel()
+        app.state.completed_history_task.cancel()
         with suppress(asyncio.CancelledError):
             await app.state.queue_recovery_task
+        with suppress(asyncio.CancelledError):
+            await app.state.completed_history_task
         await app.state.queue_relay.close()
         await app.state.http.aclose()
 

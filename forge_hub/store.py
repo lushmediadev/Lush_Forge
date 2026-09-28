@@ -282,6 +282,18 @@ class Store:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def list_completed_jobs_missing_output(self, limit: int = 1000) -> list[dict]:
+        cutoff = (_now() - timedelta(days=7)).isoformat()
+        with self._db() as conn:
+            rows = conn.execute(
+                """SELECT task_id, worker_id FROM jobs
+                   WHERE status = 'done' AND finished_at >= ?
+                     AND (image_path IS NULL OR thumbnail IS NULL)
+                   ORDER BY finished_at DESC LIMIT ?""",
+                (cutoff, min(max(limit, 1), 1000)),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def begin_job_cancel(self, account_id: int, task_id: str) -> dict | None:
         with self._db() as conn:
             cur = conn.execute(
