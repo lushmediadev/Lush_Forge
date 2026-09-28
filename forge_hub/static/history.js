@@ -101,7 +101,16 @@
   dateFilter.append(dateFromLabel, dateToLabel);
   const list = node("div", "lush-history-list");
   list.setAttribute("aria-live", "polite");
-  const footer = node("div", "lush-history-footer", "Đang tải tài khoản…");
+  const footer = node("div", "lush-history-footer");
+  const footerAccount = node("span", "lush-history-footer-account", "Đang tải tài khoản…");
+  const logout = node("button", "lush-history-logout");
+  logout.type = "button";
+  logout.title = "Đăng xuất tài khoản";
+  logout.setAttribute("aria-label", "Đăng xuất tài khoản");
+  const logoutIcon = node("span", "lush-history-logout-icon", "⎋");
+  logoutIcon.setAttribute("aria-hidden", "true");
+  logout.append(logoutIcon, document.createTextNode("Đăng xuất"));
+  footer.append(footerAccount, logout);
   drawer.append(header, toolbar, dateFilter, list, footer);
   document.body.append(launcher, drawer);
 
@@ -113,6 +122,20 @@
   }
   launcher.addEventListener("click", () => setOpen(drawer.hidden));
   close.addEventListener("click", () => setOpen(false));
+  logout.addEventListener("click", async () => {
+    logout.disabled = true;
+    logout.setAttribute("aria-busy", "true");
+    footerAccount.textContent = "Đang đăng xuất…";
+    try {
+      const response = await fetch("/hub/api/logout", { method: "POST", credentials: "same-origin" });
+      if (!response.ok) throw new Error("Không thể đăng xuất");
+      window.location.assign("/hub/login");
+    } catch (cause) {
+      logout.disabled = false;
+      logout.removeAttribute("aria-busy");
+      footerAccount.textContent = cause.message;
+    }
+  });
   document.addEventListener("click", (event) => {
     if (drawer.hidden || drawer.contains(event.target) || launcher.contains(event.target)) return;
     setOpen(false);
@@ -178,7 +201,7 @@
         } catch (cause) {
           await refresh();
           cancel.disabled = false;
-          footer.textContent = cause.message;
+          footerAccount.textContent = cause.message;
         }
       });
       heading.append(cancel);
@@ -230,7 +253,7 @@
           jobs.all = jobs.all.filter((item) => item.task_id !== job.task_id);
           render();
         } catch (cause) {
-          footer.textContent = cause.message;
+          footerAccount.textContent = cause.message;
         }
       });
       actions.append(remove);
@@ -258,7 +281,7 @@
     });
     list.replaceChildren(...(visible.length ? visible.map(makeItem) : [node("p", "lush-history-empty", "Chưa có job phù hợp.")]));
     if (jobs.account) {
-      footer.textContent = `${jobs.account.username} · ${jobs.account.worker_id === "forge1" ? "Máy 1" : "Máy 2"} · Lịch sử dùng chung cho tài khoản này`;
+      footerAccount.textContent = `${jobs.account.username} · ${jobs.account.worker_id === "forge1" ? "Máy 1" : "Máy 2"} · Lịch sử dùng chung cho tài khoản này`;
     }
   }
 
@@ -357,7 +380,7 @@
       render();
       pollActiveProgress();
     } catch (cause) {
-      footer.textContent = cause.message;
+      footerAccount.textContent = cause.message;
     }
   }
 
