@@ -21,6 +21,7 @@
 - Khi Hub khởi động, một lượt backfill sửa các job `done` gần đây đang thiếu thumbnail/output path từ worker result cache; không chạy lại generation.
 - Root HTML injection adds `defer` only to the legacy Infinite Image Browsing script. This removes its synchronous head-blocking behavior while preserving the extension tab and leaving Forge's other scripts/native preview untouched.
 - History API trả job, ảnh thumbnail, và output đúng account; worker callbacks yêu cầu key riêng.
+- Task image URLs are immutable per task, so Hub preserves upstream length/validator headers and serves a private one-day cache; repeat opens avoid a full worker-tunnel transfer.
 - Drawer live preview gửi `id_live_preview` mới nhất cùng `/internal/progress` request; chỉ poll khi drawer mở. Không phủ hay can thiệp Gallery/latent preview gốc của Forge.
 - Forge Gradio 4.40.0 reports generation events as HTTP SSE on `/queue/data`; the Hub relays messages to browsers while maintaining its own upstream connection across browser reloads.
 - Queue relay replay excludes terminal `process_completed`/`close_stream` messages after the first subscriber disconnects; live subscribers still receive terminal output normally.

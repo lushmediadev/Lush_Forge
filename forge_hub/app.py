@@ -448,7 +448,7 @@ async def job_thumbnail(task_id: str, request: Request):
     job = await asyncio.to_thread(STORE.get_job, account["id"], task_id)
     if not job or not job["thumbnail"]:
         raise HTTPException(status_code=404, detail="Chưa có thumbnail")
-    return Response(job["thumbnail"], media_type="image/jpeg", headers={"Cache-Control": "private, max-age=60"})
+    return Response(job["thumbnail"], media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
 
 @app.get("/hub/api/jobs/{task_id}/image")
@@ -470,9 +470,14 @@ async def job_image(task_id: str, request: Request):
     if upstream.status_code != 200:
         await upstream.aclose()
         raise HTTPException(status_code=404, detail="Ảnh không còn trên Forge")
+    image_headers = {"Cache-Control": "private, max-age=86400, immutable"}
+    for header_name in ("content-length", "etag", "last-modified"):
+        header_value = upstream.headers.get(header_name)
+        if header_value:
+            image_headers[header_name] = header_value
     return StreamingResponse(
         upstream.aiter_raw(), media_type=upstream.headers.get("content-type", "image/png"),
-        headers={"Cache-Control": "private, max-age=60"}, background=BackgroundTask(upstream.aclose),
+        headers=image_headers, background=BackgroundTask(upstream.aclose),
     )
 
 

@@ -111,6 +111,7 @@
 - Add a visible `⎋ Đăng xuất` action with icon and accessible label to the Hàng đợi & lịch sử footer.
 - Refine the logout action to sit at the footer edge as a text-only hover action, matching the neutral history drawer instead of a boxed button.
 - Replace the logout glyph with an inline Lucide-style `LogOut` SVG so the icon is crisp without adding a new runtime dependency.
+- Add `Tải ảnh` between `Xem ảnh` and `Xóa khỏi lịch sử`, and cache immutable task images for one day to avoid slow repeat opens through the worker tunnel.
 - Make VPS rollout poll the health endpoint after restart before rollback; long-lived SSE connections can make systemd stop take up to its graceful-shutdown timeout.
 - Keep worker outbox/result metadata private (`0700` directory, `0600` SQLite file); verify both callback tunnels deliver and drain an unknown-job sentinel without the previous `Request` exception.
 - Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.

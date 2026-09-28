@@ -257,7 +257,11 @@
       open.href = urlFor(job.task_id, "image");
       open.target = "_blank";
       open.rel = "noopener";
-      actions.append(open);
+      const download = node("a", "", "Tải ảnh");
+      download.href = open.href;
+      download.download = `lush-forge-${job.task_id.replace(/[^a-z0-9_-]+/gi, "") || "image"}.png`;
+      download.setAttribute("aria-label", `Tải ảnh: ${job.prompt || job.task_id}`);
+      actions.append(open, download);
     }
     if ((job.status === "failed" || job.status === "cancelled") && job.error_message) {
       main.append(node("p", "lush-history-error", job.error_message));
