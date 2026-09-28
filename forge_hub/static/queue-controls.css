@@ -1,0 +1,90 @@
+/* Keep Forge's primary action available while native Gradio jobs are queued. */
+.generate-box {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 0;
+  align-items: stretch;
+}
+
+#txt2img_generate,
+#img2img_generate {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: 100% !important;
+  min-height: 4.5em;
+}
+
+#txt2img_generate,
+#img2img_generate {
+  position: relative !important;
+}
+
+.lush-generate-queue-count {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  display: inline-grid;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  place-items: center;
+  border: 1px solid #fff;
+  border-radius: 5px;
+  background: #4fbf89;
+  color: #102015;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.lush-generate-queue-count[hidden] {
+  display: none !important;
+}
+
+.generate-box.lush-queue-active {
+  row-gap: 6px;
+}
+
+.generate-box .gradio-button.generate-box-interrupt,
+.generate-box .gradio-button.generate-box-interrupting,
+.generate-box .gradio-button.generate-box-skip {
+  position: static !important;
+  grid-row: 2;
+  width: auto !important;
+  min-width: 80px;
+  height: 32px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px !important;
+  background: #b4c0cc;
+  color: #222831;
+  font-size: 0.84em;
+}
+
+.generate-box .gradio-button.generate-box-interrupt,
+.generate-box .gradio-button.generate-box-interrupting {
+  grid-column: 2;
+}
+
+.generate-box .gradio-button.generate-box-skip {
+  grid-column: 3;
+}
+
+.generate-box .gradio-button.generate-box-interrupt:hover,
+.generate-box .gradio-button.generate-box-interrupting:hover,
+.generate-box .gradio-button.generate-box-skip:hover {
+  background: #c2cfdb;
+}
+
+@media (max-width: 560px) {
+  .generate-box .gradio-button.generate-box-interrupt,
+  .generate-box .gradio-button.generate-box-interrupting,
+  .generate-box .gradio-button.generate-box-skip {
+    min-width: 70px;
+    height: 30px;
+    min-height: 30px;
+  }
+}

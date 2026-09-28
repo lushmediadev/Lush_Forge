@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0d10">
+  <title>Đăng nhập · Lush Forge</title>
+  <link rel="icon" type="image/svg+xml" href="/hub/assets/lush-logo-red.svg">
+  <link rel="stylesheet" href="/hub/assets/style.css?v=2">
+  <script src="/hub/assets/login.js?v=2" defer></script>
+</head>
+<body class="login-page">
+  <div class="login-backdrop" aria-hidden="true"></div>
+  <main class="login-shell">
+    <header class="login-header">
+      <div class="brand"><img class="brand-logo" src="/hub/assets/lush-logo-red.svg" alt="Logo Lush Media"><span>Lush Media</span></div>
+      <span class="workspace-name">Forge Studio</span>
+    </header>
+
+    <div class="login-grid">
+      <section class="login-copy" aria-label="Giới thiệu Lush Forge">
+        <p class="login-kicker">Không gian tạo ảnh của Lush Media</p>
+        <h1>Từ ý tưởng<br>đến hình ảnh.</h1>
+        <p>Tạo ảnh, thêm LoRA và theo dõi công việc trên máy Forge được gán cho nhóm của bạn.</p>
+      </section>
+
+      <section class="login-panel" aria-labelledby="login-title">
+        <div class="login-panel-heading">
+          <img class="panel-logo" src="/hub/assets/lush-logo-red.svg" alt="">
+          <div><span class="panel-brand">Lush Media</span><span class="panel-product">Forge Studio</span></div>
+        </div>
+        <h2 id="login-title">Đăng nhập</h2>
+        <p class="intro">Dùng tài khoản do quản trị viên cấp để tiếp tục.</p>
+        <form id="login-form" autocomplete="on">
+          <label for="username">Tài khoản</label>
+          <input id="username" name="username" autocomplete="username" placeholder="Nhập tài khoản" required autofocus>
+          <label for="password">Mật khẩu</label>
+          <div class="password-field">
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required>
+            <button id="toggle-password" class="password-toggle" type="button" aria-label="Hiện mật khẩu" aria-pressed="false">Hiện</button>
+          </div>
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+          <button id="login-submit" class="button button-primary login-submit" type="submit"><span class="submit-label">Đăng nhập</span><span aria-hidden="true">↗</span></button>
+        </form>
+        <p class="login-help">Cần tài khoản hoặc quên mật khẩu? Liên hệ quản trị viên.</p>
+      </section>
+    </div>
+    <footer class="login-footer"><span>Lush Media · Forge Studio</span><span>Dành cho đội ngũ nội bộ</span></footer>
+  </main>
+</body>
+</html>

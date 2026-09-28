@@ -1,0 +1,22 @@
+[Unit]
+Description=Lush Forge Hub login and private Forge proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forgehub
+Group=forgehub
+WorkingDirectory=/opt/lush-forge-hub/repo
+EnvironmentFile=/etc/lush-forge-hub.env
+ExecStart=/opt/lush-forge-hub/app/.venv/bin/uvicorn forge_hub.app:app --host 172.17.0.1 --port 8036 --workers 1
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lush-forge-hub
+
+[Install]
+WantedBy=multi-user.target

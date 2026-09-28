@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111514">
+  <title>Quản lý tài khoản · Lush Forge</title>
+  <link rel="icon" type="image/svg+xml" href="/hub/assets/lush-logo-red.svg">
+  <link rel="stylesheet" href="/hub/assets/style.css?v=2">
+  <script src="/hub/assets/admin.js?v=2" defer></script>
+</head>
+<body class="admin-page">
+  <header class="topbar">
+    <div class="brand"><img class="brand-logo" src="/hub/assets/lush-logo-red.svg" alt="Logo Lush Media"><span>Lush Media</span><span class="brand-divider" aria-hidden="true"></span><span class="brand-context">Forge Studio</span></div>
+    <nav aria-label="Điều hướng">
+      <a class="nav-forge" href="/">Mở Forge <span aria-hidden="true">↗</span></a>
+      <button id="logout" class="text-button" type="button">Đăng xuất</button>
+    </nav>
+  </header>
+
+  <main class="admin-shell">
+    <div class="page-heading">
+      <div>
+        <p class="page-context">Không gian quản trị</p>
+        <h1>Quản lý tài khoản</h1>
+        <p>Gán người dùng vào máy Forge và quản lý quyền truy cập.</p>
+      </div>
+      <div class="status-area">
+        <span class="status-label">Trạng thái máy</span>
+        <div id="worker-status" class="worker-status" aria-live="polite"><span>Đang kiểm tra…</span></div>
+      </div>
+    </div>
+
+    <section class="admin-section create-section" aria-labelledby="create-title">
+      <div class="section-intro">
+        <h2 id="create-title">Tạo tài khoản</h2>
+        <p>Tài khoản mới dùng chung hàng đợi và lịch sử với mọi người đăng nhập bằng tài khoản đó.</p>
+      </div>
+      <div class="section-content">
+        <form id="create-form" class="create-form">
+          <div><label for="new-username">Tài khoản</label><input id="new-username" name="username" required minlength="3" maxlength="32" autocomplete="off" placeholder="Tên đăng nhập"></div>
+          <div><label for="new-password">Mật khẩu</label><input id="new-password" name="password" type="password" required minlength="1" autocomplete="new-password" placeholder="Mật khẩu"></div>
+          <div><label for="new-worker">Máy Forge</label><select id="new-worker" name="worker_id"><option value="forge1">Máy 1</option><option value="forge2">Máy 2</option></select></div>
+          <button class="button button-primary" type="submit">Tạo tài khoản <span aria-hidden="true">↗</span></button>
+        </form>
+        <p id="create-message" class="inline-message" role="status"></p>
+      </div>
+    </section>
+
+    <section class="admin-section accounts-section" aria-labelledby="accounts-title">
+      <div class="section-heading">
+        <div><h2 id="accounts-title">Danh sách tài khoản</h2><p id="account-count" class="section-note">Đang tải…</p></div>
+        <div class="table-tools">
+          <input id="account-search" type="search" placeholder="Tìm tài khoản" aria-label="Tìm tài khoản">
+          <button id="refresh" class="button button-secondary" type="button">Tải lại</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Tài khoản</th><th>Quyền</th><th>Máy Forge</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="accounts-body"><tr><td colspan="5">Đang tải…</td></tr></tbody></table></div>
+      <p id="accounts-message" class="inline-message" role="status"></p>
+    </section>
+  </main>
+
+  <dialog id="password-dialog" class="password-dialog">
+    <form id="password-form">
+      <h2>Đặt lại mật khẩu</h2>
+      <p id="password-account"></p>
+      <label for="reset-password">Mật khẩu mới</label>
+      <input id="reset-password" type="password" minlength="1" required autocomplete="new-password">
+      <p id="password-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="cancel-password" class="button button-secondary" type="button">Hủy</button><button class="button button-primary" type="submit">Lưu mật khẩu</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

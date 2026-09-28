@@ -1,0 +1,10 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Lush Media Logo</title>
+  <desc id="desc">Stylized LM music monogram in red-orange</desc>
+  <g fill="#ff5528">
+    <path d="M58 22c-7 0-12 5-12 12v116c0 56 45 102 101 102h54c7 0 12-5 12-12s-5-12-12-12h-54c-43 0-77-35-77-78V34c0-7-5-12-12-12z"/>
+    <path d="M106 66c0-5 3-9 8-11 5-2 10-1 14 3l34 35 34-35c3-4 9-5 14-3 5 2 8 6 8 11v109c0 7-5 12-12 12s-12-5-12-12V95l-24 24c-5 5-12 5-17 0l-24-24v80c0 7-5 12-12 12s-12-5-12-12V66z"/>
+    <rect x="181" y="119" width="14" height="78" rx="7"/>
+    <circle cx="188" cy="205" r="28"/>
+  </g>
+</svg>

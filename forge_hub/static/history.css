@@ -1,0 +1,50 @@
+.lush-history-launcher, .lush-history-drawer, .lush-history-drawer * { box-sizing: border-box; }
+.lush-history-launcher, .lush-history-drawer button, .lush-history-drawer input, .lush-history-drawer select { font: inherit; }
+.lush-history-launcher { position: fixed; right: 20px; bottom: 20px; z-index: 10020; display: flex; align-items: center; justify-content: center; min-width: 88px; height: 42px; padding: 0 14px; border: 1px solid #ccd1cc; border-radius: 8px; background: #fff; color: #202723; box-shadow: 0 2px 8px #0002; font-size: 14px; font-weight: 650; cursor: pointer; }
+.lush-history-launcher:hover { border-color: #8caa97; }
+.lush-history-launcher:focus-visible { outline: 2px solid #4fbf89; outline-offset: 2px; }
+.lush-history-badge { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px; border: 2px solid #fff; border-radius: 10px; background: #4fbf89; color: #102015; font-size: 11px; font-weight: 750; line-height: 1; }
+.lush-history-badge[hidden] { display: none; }
+.lush-history-drawer { position: fixed; z-index: 10021; top: 0; right: 0; bottom: 0; width: min(410px, 100vw); display: flex; flex-direction: column; background: #fff; color: #202723; border-left: 1px solid #d6dbd6; box-shadow: -2px 0 12px #0002; font-family: "Noto Sans", "DejaVu Sans", sans-serif; font-size: 13px; line-height: 1.45; }
+.lush-history-drawer[hidden] { display: none; }
+.lush-history-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 58px; padding: 12px 16px; border-bottom: 1px solid #e3e7e3; }
+.lush-history-title { margin: 0; font-size: 16px; font-weight: 700; }
+.lush-history-header button, .lush-history-item button { border: 0; background: transparent; color: #4b5750; cursor: pointer; }
+.lush-history-header button { padding: 4px 7px; font-size: 20px; }
+.lush-history-toolbar { display: flex; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #e3e7e3; }
+.lush-history-toolbar input, .lush-history-toolbar select { height: 36px; border: 1px solid #d6dbd6; border-radius: 7px; background: #fff; color: #202723; outline: none; }
+.lush-history-toolbar input { min-width: 0; flex: 1; padding: 0 10px; }
+.lush-history-toolbar select { width: 125px; padding: 0 7px; }
+.lush-history-toolbar input:focus, .lush-history-toolbar select:focus { border-color: #3a9a66; }
+.lush-history-date-filter { display: flex; gap: 10px; padding: 0 16px 10px; border-bottom: 1px solid #e3e7e3; }
+.lush-history-date-field { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; color: #657068; font-size: 11px; }
+.lush-history-date-field input { width: 100%; height: 34px; padding: 0 7px; border: 1px solid #d6dbd6; border-radius: 6px; background: #fff; color: #202723; font: inherit; }
+.lush-history-date-field input:focus { border-color: #3a9a66; outline: none; }
+.lush-history-list { flex: 1; min-height: 0; overflow: auto; padding: 2px 0; }
+.lush-history-empty { margin: 0; padding: 24px 16px; color: #68736c; }
+.lush-history-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #eef0ee; }
+.lush-history-thumb { flex: none; width: 52px; height: 52px; border-radius: 5px; background: #ecefec; object-fit: cover; }
+.lush-history-item-main { min-width: 0; flex: 1; }
+.lush-history-item-heading { display: flex; align-items: flex-start; gap: 8px; }
+.lush-history-prompt { margin: 0 0 5px; color: #202723; font-size: 13px; font-weight: 600; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.lush-history-item-heading .lush-history-prompt { flex: 1; min-width: 0; }
+.lush-history-cancel { flex: none; width: 24px; height: 24px; padding: 0 !important; border: 0 !important; border-radius: 4px; background: #c84f4a !important; color: #fff !important; font-size: 16px !important; font-weight: 650; line-height: 1; }
+.lush-history-cancel:hover { background: #ae3f3b !important; }
+.lush-history-cancel:disabled { opacity: .6; cursor: wait; }
+.lush-history-meta { display: flex; flex-wrap: wrap; gap: 5px 9px; color: #657068; font-size: 11px; }
+.lush-history-state { font-weight: 650; }
+.lush-history-state[data-state="running"] { color: #a06713; }
+.lush-history-state[data-state="done"] { color: #177847; }
+.lush-history-state[data-state="failed"] { color: #b54740; }
+.lush-history-state[data-state="cancelled"] { color: #657068; }
+.lush-history-state[data-state="cancelling"] { color: #9a641d; }
+.lush-history-error { margin: 5px 0 0; color: #b54740; font-size: 11px; }
+.lush-history-progress { display: flex; align-items: center; gap: 8px; margin-top: 7px; color: #536058; font-size: 11px; }
+.lush-history-progress-track { flex: 1; min-width: 48px; height: 4px; overflow: hidden; border-radius: 2px; background: #e5eae6; }
+.lush-history-progress-fill { display: block; width: 0; height: 100%; background: #4fbf89; transition: width 120ms linear; }
+.lush-history-progress-label { flex: none; min-width: 74px; text-align: right; }
+.lush-history-item-actions { display: flex; gap: 11px; margin-top: 7px; }
+.lush-history-item-actions a, .lush-history-item-actions button { padding: 0; color: #24744a; font-size: 11px; text-decoration: none; }
+.lush-history-item-actions a:hover, .lush-history-item-actions button:hover { text-decoration: underline; }
+.lush-history-footer { padding: 10px 16px; border-top: 1px solid #e3e7e3; color: #657068; font-size: 11px; }
+@media (max-width: 500px) { .lush-history-launcher { right: 12px; bottom: 12px; } }

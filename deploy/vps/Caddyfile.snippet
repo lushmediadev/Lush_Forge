@@ -1,0 +1,12 @@
+ai.lushmedia.net {
+    header {
+        -Server
+        Referrer-Policy same-origin
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+    }
+    encode zstd gzip
+    @internal path /hub/internal/*
+    respond @internal 404
+    reverse_proxy host.docker.internal:8036
+}

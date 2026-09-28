@@ -1,0 +1,13 @@
+[Unit]
+Description=Lush Forge 2 private reverse tunnel to VPS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssh -N -T -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=yes -i /home/ubuntu/.ssh/lush_forge_tunnel_ed25519 -R 127.0.0.1:18387:127.0.0.1:7860 -L 127.0.0.1:18036:172.17.0.1:8036 forge-tunnel@82.197.71.6
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
