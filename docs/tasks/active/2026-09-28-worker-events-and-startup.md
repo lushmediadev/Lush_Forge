@@ -18,8 +18,10 @@
 - Hub source changes are pushed; SSH root key access is installed. Hub code rollout and the additive `cancel_requested_at` schema migration succeeded; no job rows were manually deleted or rewritten except automatic event/result recovery.
 - The first Hub rollout attempt reached `f957178` but the old script checked health immediately after a graceful stop that timed out at 25 seconds; it rolled back to `ac310e7`. The rollout script was changed to poll health and deployed successfully at `dd170b3`; public `/healthz` is 200 and the root SSH key is installed.
 - The startup backfill found six historical `done` rows with missing output metadata but no task-specific result in either worker cache/fallback. They were left unchanged rather than guessing which Forge output belongs to which account job.
+- Both Forge Python 3.10.21 environments lacked `joblib`, which prevents the built-in soft-inpainting script from loading; pinning/installing the compatible package is the remaining worker runtime adjustment.
 - Live read-only checks: both Forge services and both tunnel units are active; worker callback tunnels return Hub health in 94–122 ms; local Forge root/config TTFB is about 51/4 ms. The logged-in root route already proxies directly to Forge, and Caddy compression is configured.
-- Chrome DevTools MCP is not configured, so FCP/LCP and browser request-chain profiling remain blocked until the user adds `chrome-devtools` to MCP config.
+- `joblib==1.5.3` is now pinned in `deploy/ubuntu/forge-extra-requirements.txt` and installed in both Forge virtualenvs; Forge 1 restarted and its fresh log no longer reports the `soft_inpainting.py` import error.
+- Chrome DevTools MCP was added to the user's Codex config, but the current Codex process has not loaded it yet. FCP/LCP tracing requires restarting Codex and resuming this task.
 
 ## Guardrails
 
@@ -34,4 +36,4 @@
 2. Review static diffs, account-sharing/polling semantics, and fallback-output disk use; check rollback paths.
 3. Verify syntax/static behavior and perform only safe live smoke checks after confirming queues are idle.
 4. Commit/push and roll out the worker extension; roll out Hub recovery changes with rollback evidence.
-5. Request Chrome DevTools MCP configuration for browser performance tracing; consider manual historical output mapping only if the user explicitly wants that risk.
+5. After Codex restarts, capture browser performance tracing; consider manual historical output mapping only if the user explicitly wants that risk.

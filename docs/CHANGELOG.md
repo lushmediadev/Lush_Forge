@@ -106,6 +106,7 @@
 - Avoid writing a duplicate fallback PNG when Forge already supplied a saved output path; only mark a job complete when its output path and thumbnail exist.
 - Prune closed per-tab SSE channels after the reconnect grace window so session state does not accumulate over long runs.
 - Backfill recent completed history entries missing a thumbnail/output path from worker result metadata without replaying generation.
+- Pin the missing `joblib` dependency used by Forge's built-in soft-inpainting script for consistent worker startup.
 - Make VPS rollout poll the health endpoint after restart before rollback; long-lived SSE connections can make systemd stop take up to its graceful-shutdown timeout.
 - Keep worker outbox/result metadata private (`0700` directory, `0600` SQLite file); verify both callback tunnels deliver and drain an unknown-job sentinel without the previous `Request` exception.
 - Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.

@@ -1,0 +1,2 @@
+# Optional Forge built-in scripts that are absent from the upstream base venv.
+joblib==1.5.3

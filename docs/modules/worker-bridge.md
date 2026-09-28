@@ -25,6 +25,7 @@ Both workers use distinct SSH keys; each key is limited to one reverse listener 
 - Private network aliases resolve to their account-unique filename so Forge does not map two users' same-named uploads to the same alias.
 - Restart Forge after extension changes. Check queue empty and GPU idle before restart.
 - Keep urllib `Request` aliased as `UrlRequest`; FastAPI `Request` must keep its separate `FastAPIRequest` alias to avoid shadowing the outbound HTTP request class.
+- Optional Forge Python dependencies are pinned in `deploy/ubuntu/forge-extra-requirements.txt`; `joblib` is required by built-in `soft_inpainting.py` on the current Forge tree.
 
 ## Operations
 
