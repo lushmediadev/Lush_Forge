@@ -99,3 +99,9 @@
 - Copied the shared FLUX 8-step LoRA to both Forge workers and verified the matching SHA-256.
 - Added account-manifest filtering, account-unique private upload names, and Hub prompt checks for LoRA access.
 - Pushed sanitized source to `lushmediadev/Lush_Forge`; moved the VPS systemd working directory to `/opt/lush-forge-hub/repo` and added commit-based rollout with health-check rollback.
+# 2026-09-28 - Repair worker events and queue recovery
+
+- Fix the urllib/FastAPI `Request` name collision and persist worker lifecycle callbacks in a bounded local SQLite outbox with retry.
+- Reconcile completed fallback images before queue replay, bound worker control calls, and recover stale cancellation requests without interrupting known running jobs.
+- Avoid writing a duplicate fallback PNG when Forge already supplied a saved output path; only mark a job complete when its output path and thumbnail exist.
+- Confirmed the logged-in root route already proxies directly to Forge; deferred speculative UI changes pending a Chrome DevTools trace.

@@ -41,6 +41,8 @@ HOP_HEADERS = {
 OUTPUT_ROOT = "/home/ubuntu/forge/outputs/"
 MAX_GENERATION_REQUEST_BYTES = 20_000_000
 QUEUE_RECOVERY_GRACE_SECONDS = 90
+CANCEL_RECOVERY_GRACE_SECONDS = 20
+WORKER_CONTROL_TIMEOUT = httpx.Timeout(connect=5, read=8, write=15, pool=5)
 FORGE_HEAD_INJECTION = (
     '<link rel="stylesheet" href="/hub/assets/queue-controls.css">'
     '<link rel="stylesheet" href="/hub/assets/history.css">'
@@ -54,13 +56,18 @@ LORA_SUFFIXES = {".safetensors", ".ckpt", ".pt"}
 LORA_TAG_RE = re.compile(r"<lora:([^:>]+):[^>]*>", re.IGNORECASE)
 
 
-async def _app_worker_json(app: FastAPI, worker_id: str, path: str, body: dict | None = None) -> dict:
+async def _app_worker_json(
+    app: FastAPI, worker_id: str, path: str, body: dict | None = None,
+    headers: dict[str, str] | None = None,
+) -> dict:
     url = SETTINGS.worker_urls[worker_id] + path
     try:
         if body is None:
-            response = await app.state.http.get(url)
+            response = await app.state.http.get(url, headers=headers, timeout=WORKER_CONTROL_TIMEOUT)
         else:
-            response = await app.state.http.post(url, json=body)
+            response = await app.state.http.post(
+                url, json=body, headers=headers, timeout=WORKER_CONTROL_TIMEOUT,
+            )
         response.raise_for_status()
         return response.json()
     except (httpx.HTTPError, ValueError) as exc:
@@ -81,6 +88,7 @@ async def _resubmit_saved_job(app: FastAPI, job: dict) -> None:
         SETTINGS.worker_urls[job["worker_id"]] + "/queue/join",
         content=request_json,
         headers={"Content-Type": "application/json"},
+        timeout=WORKER_CONTROL_TIMEOUT,
     )
     response.raise_for_status()
     event_id = response.json().get("event_id")
@@ -90,14 +98,63 @@ async def _resubmit_saved_job(app: FastAPI, job: dict) -> None:
     await app.state.queue_relay.ensure(job["worker_id"], job["account_id"], session_hash)
 
 
+async def _reconcile_completed_job(app: FastAPI, job: dict) -> bool | None:
+    worker_id = job["worker_id"]
+    worker_key = SETTINGS.worker_keys.get(worker_id, "")
+    result_path = "/internal/history/result/" + quote(job["task_id"], safe="")
+    try:
+        result = await _app_worker_json(
+            app, worker_id, result_path,
+            headers={"X-Forge-Worker-Key": worker_key},
+        )
+    except RuntimeError:
+        return None
+    if not result.get("completed"):
+        return False
+
+    image_path = result.get("image_path")
+    thumbnail_b64 = result.get("thumbnail_b64")
+    thumbnail = None
+    if isinstance(thumbnail_b64, str):
+        try:
+            thumbnail = base64.b64decode(thumbnail_b64, validate=True)
+        except (binascii.Error, ValueError):
+            thumbnail = None
+
+    if _valid_image_path(image_path) and thumbnail and len(thumbnail) <= 150_000:
+        await asyncio.to_thread(
+            STORE.update_job_event, worker_id, job["task_id"], "thumbnail", image_path, thumbnail,
+        )
+        await asyncio.to_thread(STORE.update_job_event, worker_id, job["task_id"], "done")
+    else:
+        await asyncio.to_thread(
+            STORE.fail_recovery_job, worker_id, job["task_id"],
+            "Forge đã kết thúc job nhưng không còn ảnh kết quả để khôi phục; Hub không tự chạy lại để tránh tạo ảnh trùng.",
+        )
+    return True
+
+
 async def _recover_queued_jobs(app: FastAPI) -> None:
     while True:
         jobs = await asyncio.to_thread(STORE.list_recoverable_jobs)
         for job in jobs:
-            if job["status"] != "queued" or not job["request_json"] or not job["session_hash"]:
+            status = job["status"]
+            if status not in ("queued", "running", "cancelling"):
                 continue
+            if status != "cancelling" and (not job["request_json"] or not job["session_hash"]):
+                continue
+
+            if status == "cancelling" and job.get("cancel_requested_at"):
+                try:
+                    cancel_time = datetime.fromisoformat(job["cancel_requested_at"])
+                    cancel_age = (datetime.now(timezone.utc) - cancel_time.astimezone(timezone.utc)).total_seconds()
+                except (TypeError, ValueError):
+                    cancel_age = CANCEL_RECOVERY_GRACE_SECONDS
+                if cancel_age < CANCEL_RECOVERY_GRACE_SECONDS:
+                    continue
+
             channel = app.state.queue_relay.get(job["worker_id"], job["account_id"], job["session_hash"])
-            if channel and not channel.closed:
+            if channel and not channel.closed and status != "cancelling":
                 continue
             try:
                 progress = await _app_worker_json(app, job["worker_id"], "/internal/progress", {
@@ -105,22 +162,98 @@ async def _recover_queued_jobs(app: FastAPI) -> None:
                 })
             except RuntimeError:
                 continue
+
+            if status == "cancelling" and progress.get("active"):
+                await asyncio.to_thread(
+                    STORE.mark_cancel_race_running, job["account_id"], job["task_id"],
+                )
+                continue
+
+            if status == "cancelling" and progress.get("queued"):
+                if not job.get("event_id") or not job.get("session_hash") or job.get("fn_index") is None:
+                    continue
+                try:
+                    await _app_worker_json(app, job["worker_id"], "/cancel", {
+                        "event_id": job["event_id"],
+                        "session_hash": job["session_hash"],
+                        "fn_index": job["fn_index"],
+                    })
+                except RuntimeError:
+                    pass
+                await asyncio.sleep(0.25)
+                try:
+                    progress = await _app_worker_json(app, job["worker_id"], "/internal/progress", {
+                        "id_task": job["task_id"], "live_preview": False,
+                    })
+                except RuntimeError:
+                    continue
+                if progress.get("active"):
+                    await asyncio.to_thread(
+                        STORE.mark_cancel_race_running, job["account_id"], job["task_id"],
+                    )
+                    continue
+                if progress.get("queued"):
+                    continue
+
+            if status == "cancelling" and not progress.get("active") and not progress.get("queued"):
+                reconciled = await _reconcile_completed_job(app, job)
+                if reconciled is True:
+                    continue
+                if reconciled is None and progress.get("completed"):
+                    continue
+                if progress.get("completed"):
+                    await asyncio.to_thread(
+                        STORE.fail_recovery_job, job["worker_id"], job["task_id"],
+                        "Forge đã kết thúc job nhưng không còn ảnh kết quả để khôi phục; Hub không tự chạy lại để tránh tạo ảnh trùng.",
+                    )
+                    continue
+                if await asyncio.to_thread(
+                    STORE.finish_job_cancel, job["account_id"], job["task_id"],
+                ):
+                    await asyncio.to_thread(
+                        STORE.delete_finished_job, job["account_id"], job["task_id"],
+                    )
+                continue
+
             if progress.get("active") or progress.get("queued"):
                 try:
                     await app.state.queue_relay.ensure(job["worker_id"], job["account_id"], job["session_hash"])
                 except RuntimeError:
                     pass
                 continue
+
+            reconciled = await _reconcile_completed_job(app, job)
+            if reconciled is True:
+                continue
+            if reconciled is None and progress.get("completed"):
+                continue
+            if progress.get("completed"):
+                await asyncio.to_thread(
+                    STORE.fail_recovery_job, job["worker_id"], job["task_id"],
+                    "Forge đã kết thúc job nhưng không còn ảnh kết quả để khôi phục; Hub không tự chạy lại để tránh tạo ảnh trùng.",
+                )
+                continue
+
+            if job["status"] == "running":
+                await asyncio.to_thread(
+                    STORE.fail_recovery_job, job["worker_id"], job["task_id"],
+                    "Forge không còn báo job đang chạy và không có ảnh kết quả để khôi phục; Hub không tự chạy lại để tránh tạo ảnh trùng.",
+                )
+                continue
+
             try:
-                queue_status = await _app_worker_json(app, job["worker_id"], "/queue/status")
+                pending = await _app_worker_json(app, job["worker_id"], "/internal/pending-tasks")
+                if job["task_id"] in pending.get("tasks", []):
+                    try:
+                        await app.state.queue_relay.ensure(
+                            job["worker_id"], job["account_id"], job["session_hash"],
+                        )
+                    except RuntimeError:
+                        pass
+                    continue
             except RuntimeError:
                 continue
-            try:
-                queue_size = int(queue_status.get("queue_size", 0))
-            except (TypeError, ValueError):
-                continue
-            if queue_size > 0:
-                continue
+
             try:
                 created = datetime.fromisoformat(job["created_at"])
                 age = (datetime.now(timezone.utc) - created.astimezone(timezone.utc)).total_seconds()
@@ -862,6 +995,7 @@ async def _cancel_gradio_event(app: FastAPI, worker_id: str, generation: dict, e
                 "session_hash": generation["session_hash"],
                 "fn_index": generation["fn_index"],
             },
+            timeout=WORKER_CONTROL_TIMEOUT,
         )
 
 
@@ -885,6 +1019,7 @@ async def _proxy_generation_join(account: dict, request: Request, generation: di
     try:
         upstream_request = request.app.state.http.build_request(
             "POST", url, headers=_proxy_headers(request), content=generation["request_json"],
+            timeout=WORKER_CONTROL_TIMEOUT,
         )
         upstream = await request.app.state.http.send(upstream_request, stream=True)
         response_body = await upstream.aread()

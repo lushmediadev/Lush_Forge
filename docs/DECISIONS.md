@@ -16,9 +16,9 @@ An admin creates an account and assigns `forge1` or `forge2`. Every login sessio
 
 Multiple employees may share one account. Queue and history items are associated with the account, so those employees see the same work. Accounts on the same worker should not see each other's history by default.
 
-## HUB-005: Browser-independent native queue relay
+## HUB-005: Browser-independent native queue relay and safe recovery
 
-The Hub persists a Generate payload and its Gradio event/session metadata, then owns the upstream `/queue/data` SSE stream. Browser connections subscribe downstream; when a tab reloads or closes, only that subscriber ends, while Forge continues processing the accepted event. The Hub cancels only after verifying the event is still queued and verifies it has left the queue before responding. If Forge has started it, the Hub keeps it visible as running. A confirmed queued cancellation removes its history row immediately. Forge's native queue still runs the actual generation on the assigned GPU.
+The Hub persists a Generate payload and its Gradio event/session metadata, then owns the upstream `/queue/data` SSE stream. Browser connections subscribe downstream; when a tab reloads or closes, only that subscriber ends, while Forge continues processing the accepted event. The Hub cancels only after verifying the event is still queued and verifies it has left the queue before responding. If Forge has started it, the Hub keeps it visible as running. A confirmed queued cancellation removes its history row immediately. Recovery checks task-specific active/queued/completed state and worker-saved output before replay; known running/completed jobs are never blindly generated twice. Forge's native queue still runs the actual generation on the assigned GPU.
 
 ## HUB-006: Keep native Forge preview and show visible count
 

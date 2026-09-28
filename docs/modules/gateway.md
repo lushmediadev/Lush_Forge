@@ -16,6 +16,7 @@
 - Worker URLs là cấu hình server, không nhận từ browser.
 - `queue/join` Generate request được nhận diện theo Forge `/config` `fn_index`; payload được lưu trước khi chuyển request, rồi `event_id`/`session_hash` được lưu để hủy đúng job chờ.
 - Cancel kiểm tra `/internal/progress` trước/sau lệnh `/cancel`; nếu Forge đã bắt đầu tạo thì giữ job là `running`, không báo hủy giả. Khi Forge xác nhận job đã rời queue, Hub xóa bản ghi lịch sử ngay trong cùng request.
+- Worker control requests có read deadline 8 giây; stream `/queue/data` vẫn là kết nối dài hạn. Recovery kiểm tra active/queued/completed theo từng task, đối soát ảnh worker đã lưu trước replay và không tự gửi lại job đã chạy/kết thúc. Job `cancelling` bị bỏ dở được xử lý lại sau grace period.
 - History API trả job, ảnh thumbnail, và output đúng account; worker callbacks yêu cầu key riêng.
 - Drawer live preview gửi `id_live_preview` mới nhất cùng `/internal/progress` request; chỉ poll khi drawer mở. Không phủ hay can thiệp Gallery/latent preview gốc của Forge.
 - Forge Gradio 4.40.0 reports generation events as HTTP SSE on `/queue/data`; the Hub relays messages to browsers while maintaining its own upstream connection across browser reloads.

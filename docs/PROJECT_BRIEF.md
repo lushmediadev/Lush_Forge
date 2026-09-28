@@ -27,7 +27,10 @@
 - Root-level LoRAs on a worker are shared by every account assigned to that worker. The curated FLUX 8-step LoRA is installed at the same root path on both machines.
 - User uploads are stored as `__lush_owner_<account_id>__<filename>` in the worker's LoRA directory. Hub serves only shared and matching account entries, and validates LoRA tags before queued or API generation.
 - In-flight LoRA uploads use a random ID for percent progress and worker-confirmed cancellation; the worker removes partial or just-saved data when canceled.
+- Worker lifecycle callbacks are persisted in a per-worker SQLite outbox and retried across temporary Hub/tunnel failures. The Hub reconciles per-task completion and saved fallback output before replaying a queued request, so a known completed/running task is not blindly generated twice.
+- Worker control-plane calls use bounded timeouts; long-lived Forge SSE streams keep their separate streaming timeout. Stale `cancelling` rows are reconciled after a grace period.
 - The public Git repository is `lushmediadev/Lush_Forge`; VPS systemd runs from `/opt/lush-forge-hub/repo`. Production database and environment stay under `/var/lib/lush-forge-hub` and `/etc/lush-forge-hub.env`; the existing virtualenv remains at `/opt/lush-forge-hub/app/.venv`.
+- With a valid persistent account cookie, `/` proxies directly to the assigned Forge; `/hub/login` redirects existing sessions rather than showing an extra landing screen. Chrome DevTools profiling is still required to identify client-side Gradio bootstrap delay; Caddy compression is enabled.
 
 ## Intended system shape
 

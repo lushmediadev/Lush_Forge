@@ -100,7 +100,8 @@ class Store:
                     thumbnail BLOB,
                     created_at TEXT NOT NULL,
                     started_at TEXT,
-                    finished_at TEXT
+                    finished_at TEXT,
+                    cancel_requested_at TEXT
                 );
                 CREATE INDEX IF NOT EXISTS jobs_account_created_idx ON jobs(account_id, created_at DESC);
                 """
@@ -115,6 +116,7 @@ class Store:
                 "fn_index": "INTEGER",
                 "request_json": "TEXT",
                 "error_message": "TEXT",
+                "cancel_requested_at": "TEXT",
             }
             for name, definition in job_migrations.items():
                 if name not in job_columns:
@@ -273,8 +275,9 @@ class Store:
         with self._db() as conn:
             rows = conn.execute(
                 """SELECT task_id, account_id, worker_id, kind, prompt, status, session_hash,
-                          event_id, fn_index, request_json, created_at
-                   FROM jobs WHERE status IN ('queued', 'running') AND request_json IS NOT NULL
+                          event_id, fn_index, request_json, created_at, cancel_requested_at
+                   FROM jobs WHERE status IN ('queued', 'running', 'cancelling')
+                     AND (status = 'cancelling' OR request_json IS NOT NULL)
                    ORDER BY created_at"""
             ).fetchall()
         return [dict(row) for row in rows]
@@ -282,8 +285,8 @@ class Store:
     def begin_job_cancel(self, account_id: int, task_id: str) -> dict | None:
         with self._db() as conn:
             cur = conn.execute(
-                "UPDATE jobs SET status = 'cancelling' WHERE account_id = ? AND task_id = ? AND status = 'queued'",
-                (account_id, task_id),
+                "UPDATE jobs SET status = 'cancelling', cancel_requested_at = ? WHERE account_id = ? AND task_id = ? AND status = 'queued'",
+                (_now().isoformat(), account_id, task_id),
             )
             if not cur.rowcount:
                 return None
@@ -296,14 +299,15 @@ class Store:
     def restore_job_queue(self, account_id: int, task_id: str) -> None:
         with self._db() as conn:
             conn.execute(
-                "UPDATE jobs SET status = 'queued' WHERE account_id = ? AND task_id = ? AND status = 'cancelling'",
+                "UPDATE jobs SET status = 'queued', cancel_requested_at = NULL WHERE account_id = ? AND task_id = ? AND status = 'cancelling'",
                 (account_id, task_id),
             )
 
     def mark_cancel_race_running(self, account_id: int, task_id: str) -> bool:
         with self._db() as conn:
             cur = conn.execute(
-                """UPDATE jobs SET status = 'running', started_at = COALESCE(started_at, ?)
+                """UPDATE jobs SET status = 'running', started_at = COALESCE(started_at, ?),
+                          cancel_requested_at = NULL
                    WHERE account_id = ? AND task_id = ? AND status = 'cancelling'""",
                 (_now().isoformat(), account_id, task_id),
             )
@@ -313,7 +317,7 @@ class Store:
         with self._db() as conn:
             cur = conn.execute(
                 """UPDATE jobs SET status = 'cancelled', finished_at = ?, error_message = ?,
-                          request_json = NULL
+                          request_json = NULL, cancel_requested_at = NULL
                    WHERE account_id = ? AND task_id = ? AND status = 'cancelling'""",
                 (_now().isoformat(), error_message, account_id, task_id),
             )
@@ -336,7 +340,8 @@ class Store:
         with self._db() as conn:
             cur = conn.execute(
                 """UPDATE jobs SET session_hash = ?, event_id = NULL, request_json = ?,
-                          status = 'queued', started_at = NULL, finished_at = NULL, error_message = NULL
+                          status = 'queued', started_at = NULL, finished_at = NULL,
+                          error_message = NULL, cancel_requested_at = NULL
                    WHERE task_id = ? AND worker_id = ? AND status IN ('queued', 'running')""",
                 (session_hash, request_json, task_id, worker_id),
             )
@@ -350,7 +355,8 @@ class Store:
             return False
         with self._db() as conn:
             row = conn.execute(
-                "SELECT status FROM jobs WHERE task_id = ? AND worker_id = ?", (task_id, worker_id),
+                "SELECT status, image_path, thumbnail, finished_at FROM jobs WHERE task_id = ? AND worker_id = ?",
+                (task_id, worker_id),
             ).fetchone()
             if not row:
                 return False
@@ -359,28 +365,61 @@ class Store:
                     return False
                 if row["status"] in ("failed", "cancelled"):
                     return True
+                completed_output = (
+                    row["status"] == "running"
+                    and row["finished_at"] is not None
+                    and bool(row["image_path"] or image_path)
+                )
+                next_status = "done" if completed_output else (
+                    "running" if row["status"] == "cancelling" else row["status"]
+                )
+                now = _now().isoformat()
                 conn.execute(
                     """UPDATE jobs SET image_path = COALESCE(image_path, ?),
                               thumbnail = COALESCE(thumbnail, ?),
-                              status = CASE WHEN status = 'cancelling' THEN 'running' ELSE status END,
-                              started_at = CASE WHEN status = 'cancelling' THEN COALESCE(started_at, ?) ELSE started_at END
+                              status = ?,
+                              started_at = CASE WHEN status = 'cancelling' THEN COALESCE(started_at, ?) ELSE started_at END,
+                              request_json = CASE WHEN ? THEN NULL ELSE request_json END,
+                              cancel_requested_at = CASE WHEN status = 'cancelling' THEN NULL ELSE cancel_requested_at END
                        WHERE task_id = ?""",
-                    (image_path, thumbnail, _now().isoformat(), task_id),
+                    (image_path, thumbnail, next_status, now, completed_output, task_id),
                 )
                 return True
             if row["status"] in ("done", "failed", "cancelled"):
                 return True
             if event == "running":
                 conn.execute(
-                    "UPDATE jobs SET status = 'running', started_at = COALESCE(started_at, ?) WHERE task_id = ?",
+                    """UPDATE jobs SET status = 'running', started_at = COALESCE(started_at, ?),
+                              cancel_requested_at = NULL WHERE task_id = ?""",
+                    (_now().isoformat(), task_id),
+                )
+            elif event == "done" and (not row["image_path"] or not row["thumbnail"]):
+                # Wait for a delayed save/result callback; keep the payload for
+                # recovery instead of claiming success or replaying generation.
+                conn.execute(
+                    """UPDATE jobs SET status = 'running', finished_at = ?,
+                              cancel_requested_at = NULL WHERE task_id = ?""",
                     (_now().isoformat(), task_id),
                 )
             else:
                 conn.execute(
-                    "UPDATE jobs SET status = ?, finished_at = ?, request_json = NULL WHERE task_id = ?",
+                    """UPDATE jobs SET status = ?, finished_at = ?, request_json = NULL,
+                              cancel_requested_at = NULL WHERE task_id = ?""",
                     (event, _now().isoformat(), task_id),
                 )
         return True
+
+    def fail_recovery_job(self, worker_id: str, task_id: str, error_message: str) -> bool:
+        if worker_id not in WORKER_IDS or not task_id.startswith("task("):
+            return False
+        with self._db() as conn:
+            cur = conn.execute(
+                """UPDATE jobs SET status = 'failed', finished_at = ?, request_json = NULL,
+                          error_message = ?, cancel_requested_at = NULL
+                   WHERE task_id = ? AND worker_id = ? AND status IN ('queued', 'running', 'cancelling')""",
+                (_now().isoformat(), error_message[:1000], task_id, worker_id),
+            )
+        return cur.rowcount == 1
 
     def list_jobs(
         self, account_id: int, limit: int = 100,

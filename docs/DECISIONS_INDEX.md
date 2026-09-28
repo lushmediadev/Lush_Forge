@@ -6,7 +6,7 @@
 | HUB-002 | Forge không được truy cập trực tiếp từ Internet; dùng private transport qua VPS gateway. | Active | Network |
 | HUB-003 | Admin gán cố định mỗi tài khoản vào một Forge; mọi phiên của tài khoản đó dùng cùng worker. | Active | Routing |
 | HUB-004 | Queue/history thuộc tài khoản, có thể dùng chung bởi nhiều nhân viên biết thông tin đăng nhập. | Active | Jobs |
-| HUB-005 | Hub giữ upstream Gradio SSE độc lập với browser; chỉ xác nhận hủy khi Forge không còn job trong queue, rồi xóa ngay mục lịch sử. | Active | Queue lifecycle |
+| HUB-005 | Hub giữ upstream Gradio SSE độc lập với browser; hủy chỉ sau khi xác minh task đã rời queue; recovery đối soát task/output trước replay để tránh job trùng. | Active | Queue lifecycle |
 | HUB-006 | Giữ latent preview/Gallery native của Forge; Hub chỉ thêm preview theo job trong drawer và badge tổng job đang chạy/chờ trên Generate. Native progress loop được serialize theo tab. | Active | Queue UX |
 | HUB-007 | Internal trial chỉ dùng một lớp Hub login; bỏ Basic Auth Caddy, cookie persistent một năm và mật khẩu có thể 1 ký tự. | Active | Auth UX |
 | HUB-008 | Không replay terminal SSE cũ sau reconnect để tránh Gallery nhận lại output cũ. | Active | Queue relay |
