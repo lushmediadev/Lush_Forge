@@ -55,6 +55,12 @@ class QueueRelay:
             return None
         return channel
 
+    def prune_closed(self) -> None:
+        now = time.monotonic()
+        for key, channel in list(self.channels.items()):
+            if channel.closed_at and now - channel.closed_at > 120 and not channel.subscribers:
+                self.channels.pop(key, None)
+
     async def start(self, worker_id: str, account_id: int, session_hash: str) -> QueueChannel:
         key = self._key(worker_id, account_id, session_hash)
         channel = self.get(worker_id, account_id, session_hash)

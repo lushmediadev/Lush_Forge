@@ -136,6 +136,7 @@ async def _reconcile_completed_job(app: FastAPI, job: dict) -> bool | None:
 
 async def _recover_queued_jobs(app: FastAPI) -> None:
     while True:
+        app.state.queue_relay.prune_closed()
         jobs = await asyncio.to_thread(STORE.list_recoverable_jobs)
         for job in jobs:
             status = job["status"]

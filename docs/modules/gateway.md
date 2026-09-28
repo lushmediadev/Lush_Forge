@@ -7,6 +7,7 @@
 - `forge_hub/static/`: login/admin UI UTF-8.
 - `forge_hub/store.py`: SQLite account, revocable session, persisted Generate payload, Gradio event metadata, job history and cancellation state.
 - `forge_hub/queue_relay.py`: owns one upstream Gradio SSE connection per browser session; downstream disconnects do not close Forge's queue listener.
+- Closed SSE channels remain available briefly for reconnect, then the Hub prunes them to keep per-tab session state bounded over long runs.
 
 ## Contract
 
