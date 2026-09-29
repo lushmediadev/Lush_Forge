@@ -717,6 +717,14 @@ async def stream_lora_upload(upload_id: str, request: Request):
                 os.fsync(handle.fileno())
             if received < 1 or (final and offset + received != total):
                 raise HTTPException(status_code=400, detail="Chunk LoRA chưa đủ dữ liệu")
+            current_meta = _hub_lora_upload_meta(meta_path)
+            if (
+                not current_meta
+                or current_meta.get("account_id") != account["id"]
+                or current_meta.get("filename") != filename
+                or current_meta.get("total") != total
+            ):
+                raise HTTPException(status_code=409, detail="Upload đã bị hủy")
             with part_path.open("ab") as destination, chunk_path.open("rb") as source:
                 while True:
                     data = source.read(LORA_FORWARD_CHUNK_BYTES)
