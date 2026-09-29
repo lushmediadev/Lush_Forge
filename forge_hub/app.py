@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timezone
 import hmac
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import secrets
@@ -44,6 +45,8 @@ MAX_OUTPUT_IMAGE_BYTES = 64 * 1024 * 1024
 QUEUE_RECOVERY_GRACE_SECONDS = 90
 CANCEL_RECOVERY_GRACE_SECONDS = 20
 WORKER_CONTROL_TIMEOUT = httpx.Timeout(connect=5, read=8, write=15, pool=5)
+LORA_CHUNK_BYTES = 8 * 1024 * 1024
+HUB_LORA_UPLOAD_DIRNAME = ".lora-uploads"
 FORGE_HEAD_INJECTION = (
     '<title>Forge - Trình tạo ảnh</title>'
     '<link rel="icon" type="image/svg+xml" href="/hub/assets/lush-logo-red.svg?v=4" data-lush-forge-favicon>'
@@ -78,6 +81,67 @@ async def _app_worker_json(
         return response.json()
     except (httpx.HTTPError, ValueError) as exc:
         raise RuntimeError(f"{worker_id} unavailable") from exc
+
+
+def _hub_lora_upload_paths(upload_id: str) -> tuple[Path, Path, Path]:
+    root = SETTINGS.database_path.parent / HUB_LORA_UPLOAD_DIRNAME
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return (
+        root / f"{upload_id}.part",
+        root / f"{upload_id}.meta",
+        root / f"{upload_id}.chunk",
+    )
+
+
+def _hub_lora_upload_meta(meta_path: Path) -> dict | None:
+    try:
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _hub_lora_cleanup(upload_id: str) -> None:
+    for path in _hub_lora_upload_paths(upload_id):
+        path.unlink(missing_ok=True)
+
+
+async def _forward_hub_lora_file(
+    request: Request, account: dict, upload_id: str, filename: str,
+    part_path: Path, total: int,
+) -> dict:
+    worker_id = account["worker_id"]
+    url = SETTINGS.worker_urls[worker_id] + f"/internal/lora/uploads/{upload_id}?{urlencode({'filename': filename})}"
+    headers = {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": str(total),
+        "X-Forge-Worker-Key": SETTINGS.worker_keys.get(worker_id, ""),
+        "X-Lush-Account-Id": str(account["id"]),
+    }
+
+    async def body():
+        with part_path.open("rb") as handle:
+            while True:
+                chunk = await asyncio.to_thread(handle.read, LORA_FORWARD_CHUNK_BYTES)
+                if not chunk:
+                    break
+                yield chunk
+
+    try:
+        response = await request.app.state.http.post(url, content=body(), headers=headers)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Không liên lạc được với {worker_id}") from exc
+    try:
+        result = response.json()
+    except ValueError:
+        result = {}
+    if response.status_code >= 400:
+        detail = result.get("detail") if isinstance(result, dict) else None
+        status_code = response.status_code if response.status_code in (400, 403, 409, 413) else 502
+        raise HTTPException(status_code=status_code, detail=detail or "Forge không nhận được LoRA")
+    if not isinstance(result, dict) or not result.get("ok"):
+        raise HTTPException(status_code=502, detail="Forge không xác nhận file LoRA")
+    return {"ok": True, "filename": filename, "size": result.get("size", total)}
 
 
 async def _resubmit_saved_job(app: FastAPI, job: dict) -> None:
@@ -591,6 +655,86 @@ async def stream_lora_upload(upload_id: str, request: Request):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Mã upload không hợp lệ") from exc
     filename = _lora_filename(request.query_params.get("filename"))
+
+    # Browser uploads are split into small requests so Cloudflare's per-request
+    # body limit cannot reject a large LoRA after the progress bar reaches 100%.
+    offset_raw = request.query_params.get("offset")
+    total_raw = request.query_params.get("total")
+    if offset_raw is not None or total_raw is not None:
+        try:
+            offset = int(offset_raw or "")
+            total = int(total_raw or "")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Chunk upload không hợp lệ") from exc
+        if total < 1 or total > MAX_LORA_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File LoRA trống hoặc vượt giới hạn 2 GB")
+        if offset < 0 or offset > total:
+            raise HTTPException(status_code=400, detail="Offset chunk không hợp lệ")
+        final = request.query_params.get("final") == "1"
+        part_path, meta_path, chunk_path = _hub_lora_upload_paths(upload_id)
+        meta = _hub_lora_upload_meta(meta_path)
+        if offset == 0:
+            if meta and meta.get("account_id") != account["id"]:
+                raise HTTPException(status_code=403, detail="Upload thuộc tài khoản khác")
+            part_path.unlink(missing_ok=True)
+            meta_path.write_text(
+                json.dumps({"account_id": account["id"], "filename": filename, "total": total}),
+                encoding="utf-8",
+            )
+            meta = {"account_id": account["id"], "filename": filename, "total": total}
+        elif (
+            not meta
+            or meta.get("account_id") != account["id"]
+            or meta.get("filename") != filename
+            or meta.get("total") != total
+        ):
+            raise HTTPException(status_code=409, detail="Không tìm thấy trạng thái upload này")
+
+        current_size = part_path.stat().st_size if part_path.exists() else 0
+        if current_size != offset:
+            raise HTTPException(status_code=409, detail=f"Offset không khớp; cần bắt đầu từ {current_size}")
+
+        # A retry of the final request can finalize an already assembled file
+        # without appending a second copy of the last chunk.
+        if offset == total and final:
+            result = await _forward_hub_lora_file(request, account, upload_id, filename, part_path, total)
+            _hub_lora_cleanup(upload_id)
+            return result
+
+        max_chunk = min(LORA_CHUNK_BYTES, total - offset)
+        chunk_path.unlink(missing_ok=True)
+        received = 0
+        try:
+            with chunk_path.open("wb") as handle:
+                async for chunk in request.stream():
+                    if not chunk:
+                        continue
+                    received += len(chunk)
+                    if received > max_chunk:
+                        raise HTTPException(status_code=413, detail="Chunk LoRA quá lớn")
+                    handle.write(chunk)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if received < 1 or (final and offset + received != total):
+                raise HTTPException(status_code=400, detail="Chunk LoRA chưa đủ dữ liệu")
+            with part_path.open("ab") as destination, chunk_path.open("rb") as source:
+                while True:
+                    data = source.read(LORA_FORWARD_CHUNK_BYTES)
+                    if not data:
+                        break
+                    destination.write(data)
+                destination.flush()
+                os.fsync(destination.fileno())
+        finally:
+            chunk_path.unlink(missing_ok=True)
+
+        next_offset = offset + received
+        if next_offset < total or not final:
+            return {"ok": True, "complete": False, "offset": next_offset, "size": total}
+        result = await _forward_hub_lora_file(request, account, upload_id, filename, part_path, total)
+        _hub_lora_cleanup(upload_id)
+        return result
+
     content_length = request.headers.get("content-length")
     if content_length:
         try:
@@ -647,6 +791,10 @@ async def cancel_lora_upload(upload_id: str, request: Request):
         upload_id = str(uuid.UUID(upload_id))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Mã upload không hợp lệ") from exc
+    meta_path = _hub_lora_upload_paths(upload_id)[1]
+    meta = _hub_lora_upload_meta(meta_path)
+    if meta and meta.get("account_id") != account["id"]:
+        raise HTTPException(status_code=403, detail="Upload thuộc tài khoản khác")
     worker_id = account["worker_id"]
     try:
         response = await request.app.state.http.post(
@@ -660,6 +808,7 @@ async def cancel_lora_upload(upload_id: str, request: Request):
         result = response.json()
     except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(status_code=502, detail=f"Không xác nhận được lệnh hủy trên {worker_id}") from exc
+    _hub_lora_cleanup(upload_id)
     return {"ok": bool(result.get("cancelled")), "cancelled": bool(result.get("cancelled"))}
 
 

@@ -357,6 +357,50 @@ class GatewayFlowTest(unittest.TestCase):
                 self.assertIn(b"abc", seen[0][2])
                 client.app.state.http = original
 
+    def test_lora_upload_chunks_are_assembled_before_worker_forward(self):
+        with TemporaryDirectory() as temporary:
+            os.environ["FORGE_HUB_DB_PATH"] = str(Path(temporary) / "chunk-upload.sqlite3")
+            os.environ["FORGE_HUB_PUBLIC_ORIGIN"] = "http://testserver"
+            os.environ["FORGE_HUB_SECURE_COOKIE"] = "0"
+            os.environ["FORGE_HUB_FORGE1_KEY"] = "forge1-chunk-key"
+            from forge_hub import app as module
+
+            module.SETTINGS = module.load_settings()
+            module.STORE = module.Store(module.SETTINGS.database_path)
+            seen = []
+
+            async def worker(request: httpx.Request):
+                body = await request.aread()
+                seen.append((request.url.path, request.headers.get("x-forge-worker-key"), body))
+                if request.url.path.startswith("/internal/lora/uploads/"):
+                    return httpx.Response(200, json={"ok": True, "filename": "style.safetensors", "size": len(body)})
+                return httpx.Response(404)
+
+            with TestClient(module.app, base_url="http://testserver") as client:
+                module.STORE.create_account("alice", "AlicePassword_2026", "user", "forge1")
+                original = client.app.state.http
+                client.app.state.http = httpx.AsyncClient(transport=httpx.MockTransport(worker))
+                client.post("/hub/api/login", json={"username": "alice", "password": "AlicePassword_2026"})
+                upload_id = "11111111-1111-4111-8111-111111111111"
+                first = client.post(
+                    f"/hub/api/lora/uploads/{upload_id}?filename=style.safetensors&offset=0&total=6&final=0",
+                    headers={"Origin": "http://testserver", "Content-Type": "application/octet-stream"},
+                    content=b"abc",
+                )
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertEqual(first.json()["offset"], 3)
+                second = client.post(
+                    f"/hub/api/lora/uploads/{upload_id}?filename=style.safetensors&offset=3&total=6&final=1",
+                    headers={"Origin": "http://testserver", "Content-Type": "application/octet-stream"},
+                    content=b"def",
+                )
+                self.assertEqual(second.status_code, 200, second.text)
+                self.assertEqual(len(seen), 1)
+                self.assertEqual(seen[0][0], f"/internal/lora/uploads/{upload_id}")
+                self.assertEqual(seen[0][1], "forge1-chunk-key")
+                self.assertEqual(seen[0][2], b"abcdef")
+                client.app.state.http = original
+
 
 if __name__ == "__main__":
     unittest.main()

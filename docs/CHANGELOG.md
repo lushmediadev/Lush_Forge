@@ -124,3 +124,4 @@
 - Keep the Forge browser title stable after Gradio boot, which otherwise restores `Stable Diffusion` asynchronously.
 - Began full VPS retirement: Forge 1/2 reverse tunnels now terminate directly on `ubuntu-web`, the old VPS Hub service is stopped, and restricted keys are staged for the two Windows ComfyUI tunnels.
 - Completed the worker-side cutover: Windows ComfyUI tunnels now terminate on `ubuntu-web` through restricted keys, local `socat` bridges expose ports `18188/18288` to the Docker app, and the temporary VPS worker bridge is stopped.
+- Changed LoRA uploads to resumable 8 MiB browser chunks, assembled and finalized by the Hub before forwarding to Forge, avoiding Cloudflare's per-request body limit for large files.

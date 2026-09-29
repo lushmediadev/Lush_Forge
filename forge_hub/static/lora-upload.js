@@ -35,7 +35,7 @@
     resetTimers.set(button, window.setTimeout(() => setStatus(button, "Upload LoRA"), 4800));
   }
 
-  async function cancelUpload(button, cancel) {
+  async function cancelUpload(button, cancel, finalMessage = "Đã hủy upload") {
     const active = activeUploads.get(button);
     if (!active || active.cancelInFlight) return;
     active.cancelled = true;
@@ -49,7 +49,7 @@
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.cancelled) throw new Error(result.detail || "Không xác nhận được lệnh hủy");
-      finish(button, cancel, "Đã hủy upload");
+      finish(button, cancel, finalMessage, finalMessage !== "Đã hủy upload");
     } catch (error) {
       active.cancelInFlight = false;
       cancel.disabled = false;
@@ -64,6 +64,84 @@
       if (cancel?.classList.contains("lush-lora-cancel")) cancelUpload(button, cancel);
     }
   });
+
+  const LORA_CHUNK_BYTES = 8 * 1024 * 1024;
+
+  function wait(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+  }
+
+  function sendLoraChunk(button, cancel, active, file, offset, end) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      active.xhr = xhr;
+      const final = end === file.size ? "1" : "0";
+      const params = new URLSearchParams({
+        filename: file.name,
+        offset: String(offset),
+        total: String(file.size),
+        final,
+      });
+      xhr.open("POST", `/hub/api/lora/uploads/${active.id}?${params.toString()}`);
+      xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      xhr.upload.onprogress = (event) => {
+        if (active.cancelled || !event.lengthComputable) return;
+        const loaded = Math.min(file.size, offset + event.loaded);
+        const percent = Math.min(100, Math.round(loaded / file.size * 100));
+        button.style.setProperty("--upload-progress", `${percent}%`);
+        setStatus(button, percent === 100 ? "Đang lưu 100%" : `Đang tải ${percent}%`);
+      };
+      xhr.onload = () => {
+        active.xhr = null;
+        let result = {};
+        try { result = JSON.parse(xhr.responseText); } catch (_) { /* Retry or show the HTTP error below. */ }
+        if (xhr.status >= 200 && xhr.status < 300 && result.ok) {
+          resolve(result);
+          return;
+        }
+        const error = new Error(result.detail || "Không tải được LoRA");
+        error.retryable = xhr.status === 0 || xhr.status === 408 || xhr.status === 429 || xhr.status >= 500;
+        reject(error);
+      };
+      xhr.onerror = () => {
+        active.xhr = null;
+        const error = new Error("Kết nối upload bị ngắt");
+        error.retryable = true;
+        reject(error);
+      };
+      xhr.onabort = () => {
+        active.xhr = null;
+        reject(new Error("Upload đã hủy"));
+      };
+      xhr.send(file.slice(offset, end));
+    });
+  }
+
+  async function sendLoraChunkWithRetry(button, cancel, active, file, offset, end) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await sendLoraChunk(button, cancel, active, file, offset, end);
+      } catch (error) {
+        if (active.cancelled || !error.retryable || attempt === 2) throw error;
+        await wait(500 * (attempt + 1));
+      }
+    }
+    throw new Error("Không tải được LoRA");
+  }
+
+  async function finishLoraUpload(button, cancel, active) {
+    try {
+      const refreshResponse = await fetch("/sdapi/v1/refresh-loras", { method: "POST", credentials: "same-origin" });
+      if (active.cancelled) return;
+      if (!refreshResponse.ok) throw new Error("Đã tải lên; hãy làm mới tab Lora");
+      document.querySelectorAll('[id$="_lora_extra_refresh"]').forEach((refresh) => refresh.click());
+      await refreshManifest();
+      finish(button, cancel, "Đã tải lên");
+    } catch (error) {
+      if (active.cancelled) return;
+      finish(button, cancel, error.message || "Hãy làm mới tab Lora", true);
+    }
+  }
 
   function upload(button, cancel, input) {
     const file = input.files && input.files[0];
@@ -83,50 +161,28 @@
     const timer = resetTimers.get(button);
     if (timer) window.clearTimeout(timer);
     const id = crypto.randomUUID();
-    const xhr = new XMLHttpRequest();
-    const active = { id, xhr, cancelled: false, cancelInFlight: false };
+    const active = { id, xhr: null, cancelled: false, cancelInFlight: false };
     activeUploads.set(button, active);
     button.disabled = true;
     button.dataset.uploading = "true";
     button.style.setProperty("--upload-progress", "0%");
     cancel.hidden = false;
     setStatus(button, "Đang tải 0%");
-    xhr.open("POST", `/hub/api/lora/uploads/${id}?filename=${encodeURIComponent(file.name)}`);
-    xhr.upload.onprogress = (event) => {
-      if (active.cancelled || !event.lengthComputable) return;
-      const percent = Math.min(100, Math.round(event.loaded / event.total * 100));
-      button.style.setProperty("--upload-progress", `${percent}%`);
-      setStatus(button, percent === 100 ? "Đang lưu 100%" : `Đang tải ${percent}%`);
-    };
-    xhr.onload = async () => {
-      if (active.cancelled) return;
-      let result = {};
-      try { result = JSON.parse(xhr.responseText); } catch (_) { /* Show the HTTP error below. */ }
-      if (xhr.status < 200 || xhr.status >= 300 || !result.ok) {
-        if (xhr.status >= 500 || xhr.status === 0) {
-          cancelUpload(button, cancel);
-          return;
-        }
-        finish(button, cancel, result.detail || "Không tải được LoRA", true);
-        return;
-      }
+    (async () => {
       try {
-        const refreshResponse = await fetch("/sdapi/v1/refresh-loras", { method: "POST", credentials: "same-origin" });
-        if (active.cancelled) return;
-        if (!refreshResponse.ok) throw new Error("Đã tải lên; hãy làm mới tab Lora");
-        document.querySelectorAll('[id$="_lora_extra_refresh"]').forEach((refresh) => refresh.click());
-        await refreshManifest();
-        finish(button, cancel, "Đã tải lên");
+        let offset = 0;
+        while (offset < file.size) {
+          const end = Math.min(file.size, offset + LORA_CHUNK_BYTES);
+          const result = await sendLoraChunkWithRetry(button, cancel, active, file, offset, end);
+          if (active.cancelled) return;
+          offset = Number.isFinite(Number(result.offset)) ? Number(result.offset) : end;
+        }
+        await finishLoraUpload(button, cancel, active);
       } catch (error) {
         if (active.cancelled) return;
-        finish(button, cancel, error.message || "Hãy làm mới tab Lora", true);
+        await cancelUpload(button, cancel, "Không tải được LoRA");
       }
-    };
-    xhr.onerror = () => {
-      if (active.cancelled) return;
-      cancelUpload(button, cancel);
-    };
-    xhr.send(file);
+    })();
   }
 
   function scopeLoraCards() {
