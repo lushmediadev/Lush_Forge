@@ -56,7 +56,7 @@ FORGE_HEAD_INJECTION = (
     '<link rel="stylesheet" href="/hub/assets/lora-upload.css?v=3" data-lush-lora-upload>'
     '<script defer src="/hub/assets/history.js?v=2"></script>'
     '<script defer src="/hub/assets/queue-controls.js"></script>'
-    '<script defer src="/hub/assets/lora-upload.js?v=3" data-lush-lora-upload></script>'
+    '<script defer src="/hub/assets/lora-upload.js?v=4" data-lush-lora-upload></script>'
 ).encode("utf-8")
 NON_BLOCKING_FORGE_SCRIPT = b' src="file=extensions/sd-webui-infinite-image-browsing/javascript/index.js?'
 MAX_LORA_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
